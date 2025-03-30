@@ -1,0 +1,8 @@
+services:
+  bot:
+    restart: always
+    image: $REGISTRY_URL/$REGISTRY_USERNAME/$APP_NAME:latest
+    volumes:
+      - ./config.json:/app/config.json
+      - ./stats.json:/app/stats.json
+      - ./cooldowns.json:/app/cooldowns.json
