@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, StringSelectMenuBuilder, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, StringSelectMenuBuilder, ChannelType, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -189,7 +189,7 @@ client.on('interactionCreate', async interaction => {
                     if (sortedStats.length === 0) {
                         await interaction.reply({
                             content: 'Статистика пуста. Пока никто не принимал заявки.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                         return;
                     }
@@ -254,25 +254,25 @@ client.on('interactionCreate', async interaction => {
                     // Отправляем сообщение в тот же канал, где была использована команда
                     await interaction.channel.send({ embeds: [embed], components: [row] });
                     // Скрытое подтверждение для пользователя
-                    await interaction.reply({ content: 'Форма для подачи заявки отправлена!', ephemeral: true });
+                    await interaction.reply({ content: 'Форма для подачи заявки отправлена!', flags: MessageFlags.Ephemeral });
                     break;
 
                 case 'установитьканалзаявок':
                     if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                        return await interaction.reply({ content: 'У вас нет прав для использования этой команды!', ephemeral: true });
+                        return await interaction.reply({ content: 'У вас нет прав для использования этой команды!', flags: MessageFlags.Ephemeral });
                     }
                     config.applicationChannelId = interaction.options.getChannel('канал').id;
                     saveConfig();
-                    await interaction.reply({ content: 'Канал для заявок успешно установлен!', ephemeral: true });
+                    await interaction.reply({ content: 'Канал для заявок успешно установлен!', flags: MessageFlags.Ephemeral });
                     break;
 
                 case 'установитьрольпринятия':
                     if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                        return await interaction.reply({ content: 'У вас нет прав для использования этой команды!', ephemeral: true });
+                        return await interaction.reply({ content: 'У вас нет прав для использования этой команды!', flags: MessageFlags.Ephemeral });
                     }
                     config.acceptedRoleId = interaction.options.getRole('роль').id;
                     saveConfig();
-                    await interaction.reply({ content: 'Роль для принятых участников успешно установлена!', ephemeral: true });
+                    await interaction.reply({ content: 'Роль для принятых участников успешно установлена!', flags: MessageFlags.Ephemeral });
                     break;
 
                 case 'склад':
@@ -375,7 +375,7 @@ client.on('interactionCreate', async interaction => {
                     // Отправляем скрытое подтверждение для слеш-команды
                     await interaction.reply({
                         content: 'Сообщение склада создано!',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                     break;
             }
@@ -393,7 +393,7 @@ client.on('interactionCreate', async interaction => {
                                 .setDescription(`Вы сможете подать новую заявку через \`${formatTimeLeft(timeLeft)}\``)
                                 .setColor('#f04747')
                         ],
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                     return;
                 }
@@ -442,7 +442,7 @@ client.on('interactionCreate', async interaction => {
                 if (!stats) {
                     await interaction.reply({
                         content: 'Эта статистика устарела. Пожалуйста, используйте команду `/статистика` снова.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                     return;
                 }
@@ -479,7 +479,7 @@ client.on('interactionCreate', async interaction => {
                 try {
                     if (isAccept) {
                         if (!config.acceptedRoleId) {
-                            await interaction.reply({ content: 'Роль для принятых участников не установлена!', ephemeral: true });
+                            await interaction.reply({ content: 'Роль для принятых участников не установлена!', flags: MessageFlags.Ephemeral });
                             return;
                         }
 
@@ -491,7 +491,14 @@ client.on('interactionCreate', async interaction => {
                         
                         if (nickname) {
                             try {
-                                await member.setNickname(nickname);
+                                // Проверяем права бота перед изменением никнейма
+                                const botMember = await interaction.guild.members.fetchMe();
+                                if (botMember.roles.highest.position > member.roles.highest.position && 
+                                    interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageNicknames)) {
+                                    await member.setNickname(nickname);
+                                } else {
+                                    console.log(`Недостаточно прав для изменения никнейма пользователя ${member.user.tag}`);
+                                }
                             } catch (error) {
                                 console.error('Error setting nickname:', error);
                             }
@@ -561,10 +568,10 @@ client.on('interactionCreate', async interaction => {
                         });
                     }
 
-                    await interaction.reply({ content: 'Решение по заявке принято!', ephemeral: true });
+                    await interaction.reply({ content: 'Решение по заявке принято!', flags: MessageFlags.Ephemeral });
                 } catch (error) {
                     console.error('Error handling application decision:', error);
-                    await interaction.reply({ content: 'Произошла ошибка при обработке решения!', ephemeral: true });
+                    await interaction.reply({ content: 'Произошла ошибка при обработке решения!', flags: MessageFlags.Ephemeral });
                 }
             }
         }
@@ -677,170 +684,256 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        if (interaction.isModalSubmit() && interaction.customId.startsWith('storage_modal_')) {
-            // Получаем messageId из последней части customId
-            const parts = interaction.customId.split('_');
-            const messageId = parts[parts.length - 1];
-            // Получаем тип, объединяя все части между storage_modal_ и messageId
-            const type = parts.slice(2, -1).join('_');
-
-            console.log('Modal submit - Message ID:', messageId, 'Type:', type);
-
-            let typeName;
-            let emoji;
-            let fieldIndex;
-
-            switch(type) {
-                case 'materials':
-                    typeName = 'Материалы';
-                    emoji = '🛠️';
-                    fieldIndex = 0;
-                    break;
-                case 'money':
-                    typeName = 'Деньги';
-                    emoji = '💰';
-                    fieldIndex = 1;
-                    break;
-                case 'assault_rifle_printed':
-                    typeName = 'Assault Rifle Printed';
-                    emoji = '🔫';
-                    fieldIndex = 3;
-                    break;
-                case 'bullpup_rifle_corp':
-                    typeName = 'Bullpup Rifle Corp';
-                    emoji = '🔫';
-                    fieldIndex = 4;
-                    break;
-                case 'carbine_rifle_corp':
-                    typeName = 'Carbine Rifle Corp';
-                    emoji = '🔫';
-                    fieldIndex = 5;
-                    break;
-                case 'sniper_rifle_corp':
-                    typeName = '🔴 Sniper Rifle Corp';
-                    emoji = '🔴';
-                    fieldIndex = 6;
-                    break;
-                case 'heavy_sniper_corp':
-                    typeName = '🔴 Heavy Sniper Corp';
-                    emoji = '🔴';
-                    fieldIndex = 7;
-                    break;
-                case 'heavy_sniper_printed':
-                    typeName = '🔴 Heavy Sniper Printed';
-                    emoji = '🔴';
-                    fieldIndex = 8;
-                    break;
-                case 'pumpshotgun_corp':
-                    typeName = 'Pumpshotgun Corp';
-                    emoji = '🔫';
-                    fieldIndex = 9;
-                    break;
-                case 'revolver_printed':
-                    typeName = 'Revolver Printed';
-                    emoji = '🔫';
-                    fieldIndex = 10;
-                    break;
-                case 'carbine_rifle_printed':
-                    typeName = 'Carbine Rifle Printed';
-                    emoji = '🔫';
-                    fieldIndex = 11;
-                    break;
-                case 'special_carbine_corp':
-                    typeName = 'Special Carbine Corp';
-                    emoji = '🔫';
-                    fieldIndex = 12;
-                    break;
-            }
-
-            const before = interaction.fields.getTextInputValue('before');
-            const after = interaction.fields.getTextInputValue('after');
-            const description = interaction.fields.getTextInputValue('description');
-
-            try {
-                // Получаем сообщение напрямую из канала
-                const message = await interaction.channel.messages.fetch(messageId);
-                if (!message) {
+        if (interaction.isModalSubmit()) {
+            if (interaction.customId === 'application_modal') {
+                if (!config.applicationChannelId) {
                     await interaction.reply({
-                        content: 'Не удалось найти сообщение склада. Пожалуйста, создайте новое.',
-                        ephemeral: true
+                        content: 'Канал для заявок не настроен! Обратитесь к администратору.',
+                        flags: MessageFlags.Ephemeral
                     });
                     return;
                 }
 
-                // Создаем новый эмбед на основе старого
-                const newEmbed = new EmbedBuilder()
-                    .setTitle(message.embeds[0].title)
-                    .setColor(message.embeds[0].color);
+                const nickname = interaction.fields.getTextInputValue('nickname');
+                const age = interaction.fields.getTextInputValue('age');
+                const about = interaction.fields.getTextInputValue('about');
+                const activity = interaction.fields.getTextInputValue('activity');
 
-                // Копируем все поля из старого эмбеда с сохранением цветов
-                const fields = message.embeds[0].fields.map(field => ({
-                    name: field.name,
-                    value: field.value,
-                    inline: field.inline,
-                    nameColor: ['Heavy Sniper Printed', 'Heavy Sniper Corp', 'Sniper Rifle Corp'].includes(field.name) ? '#ff0000' : undefined
-                }));
-                
-                // Обновляем нужное поле
-                fields[fieldIndex].value = after;
-                
-                // Добавляем все поля в новый эмбед
-                newEmbed.addFields(fields);
-
-                // Обновляем сообщение
-                await message.edit({
-                    embeds: [newEmbed]
-                });
-
-                // Отправляем лог в ветку
-                const threadName = 'Логи';
-                let thread = message.thread;
-                
-                // Если ветки нет у сообщения, создаем её
-                if (!thread) {
-                    thread = await message.startThread({
-                        name: threadName,
-                        type: ChannelType.PublicThread
-                    });
-                }
-
-                const logEmbed = new EmbedBuilder()
-                    .setTitle(`${emoji} Изменение в складе: ${typeName}`)
+                const applicationEmbed = new EmbedBuilder()
+                    .setTitle('🎮 ЗАЯВКА В ФАМУ')
+                    .setDescription('Новая заявка на рассмотрение')
                     .setColor('#2b2d31')
                     .addFields(
-                        { name: 'Было', value: before, inline: true },
-                        { name: 'Стало', value: after, inline: true },
-                        { name: 'Описание', value: description },
-                        { name: 'Автор', value: `<@${interaction.user.id}>` }
+                        { 
+                            name: '👤 Игровой ник и статик',
+                            value: `\`\`\`${nickname}\`\`\``,
+                            inline: false 
+                        },
+                        { 
+                            name: '📝 О себе', 
+                            value: `\`\`\`${about}\`\`\``,
+                            inline: false 
+                        },
+                        {
+                            name: '📅 Возраст',
+                            value: `\`\`\`${age}\`\`\``,
+                            inline: true
+                        },
+                        {
+                            name: '⌚ Активность',
+                            value: `\`\`\`${activity}\`\`\``,
+                            inline: true
+                        },
+                        {
+                            name: '🎮 Discord',
+                            value: `<@${interaction.user.id}>`,
+                            inline: false
+                        }
                     )
                     .setTimestamp();
 
-                await thread.send({
-                    embeds: [logEmbed]
+                const actionRow = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`accept_${interaction.user.id}`)
+                            .setLabel('Принять')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId(`reject_${interaction.user.id}`)
+                            .setLabel('Отклонить')
+                            .setStyle(ButtonStyle.Danger)
+                    );
+
+                const channel = await client.channels.fetch(config.applicationChannelId);
+                await channel.send({
+                    embeds: [applicationEmbed],
+                    components: [actionRow]
                 });
 
+                // Устанавливаем кулдаун
+                setCooldown(interaction.user.id);
+
                 await interaction.reply({
-                    content: 'Изменения сохранены!',
-                    ephemeral: true
+                    content: 'Ваша заявка успешно отправлена! Пожалуйста, ожидайте ответа от администрации.',
+                    flags: MessageFlags.Ephemeral
                 });
-            } catch (error) {
-                console.error('Error updating storage:', error);
-                await interaction.reply({
-                    content: 'Произошла ошибка при обновлении склада.',
-                    ephemeral: true
-                });
+            } else if (interaction.customId.startsWith('storage_modal_')) {
+                // Получаем messageId из последней части customId
+                const parts = interaction.customId.split('_');
+                const messageId = parts[parts.length - 1];
+                // Получаем тип, объединяя все части между storage_modal_ и messageId
+                const type = parts.slice(2, -1).join('_');
+
+                console.log('Modal submit - Message ID:', messageId, 'Type:', type);
+
+                let typeName;
+                let emoji;
+                let fieldIndex;
+
+                switch(type) {
+                    case 'materials':
+                        typeName = 'Материалы';
+                        emoji = '🛠️';
+                        fieldIndex = 0;
+                        break;
+                    case 'money':
+                        typeName = 'Деньги';
+                        emoji = '💰';
+                        fieldIndex = 1;
+                        break;
+                    case 'assault_rifle_printed':
+                        typeName = 'Assault Rifle Printed';
+                        emoji = '🔫';
+                        fieldIndex = 3;
+                        break;
+                    case 'bullpup_rifle_corp':
+                        typeName = 'Bullpup Rifle Corp';
+                        emoji = '🔫';
+                        fieldIndex = 4;
+                        break;
+                    case 'carbine_rifle_corp':
+                        typeName = 'Carbine Rifle Corp';
+                        emoji = '🔫';
+                        fieldIndex = 5;
+                        break;
+                    case 'sniper_rifle_corp':
+                        typeName = '🔴 Sniper Rifle Corp';
+                        emoji = '🔴';
+                        fieldIndex = 6;
+                        break;
+                    case 'heavy_sniper_corp':
+                        typeName = '🔴 Heavy Sniper Corp';
+                        emoji = '🔴';
+                        fieldIndex = 7;
+                        break;
+                    case 'heavy_sniper_printed':
+                        typeName = '🔴 Heavy Sniper Printed';
+                        emoji = '🔴';
+                        fieldIndex = 8;
+                        break;
+                    case 'pumpshotgun_corp':
+                        typeName = 'Pumpshotgun Corp';
+                        emoji = '🔫';
+                        fieldIndex = 9;
+                        break;
+                    case 'revolver_printed':
+                        typeName = 'Revolver Printed';
+                        emoji = '🔫';
+                        fieldIndex = 10;
+                        break;
+                    case 'carbine_rifle_printed':
+                        typeName = 'Carbine Rifle Printed';
+                        emoji = '🔫';
+                        fieldIndex = 11;
+                        break;
+                    case 'special_carbine_corp':
+                        typeName = 'Special Carbine Corp';
+                        emoji = '🔫';
+                        fieldIndex = 12;
+                        break;
+                }
+
+                const before = interaction.fields.getTextInputValue('before');
+                const after = interaction.fields.getTextInputValue('after');
+                const description = interaction.fields.getTextInputValue('description');
+
+                try {
+                    // Получаем сообщение напрямую из канала
+                    const message = await interaction.channel.messages.fetch(messageId);
+                    if (!message) {
+                        await interaction.reply({
+                            content: 'Не удалось найти сообщение склада. Пожалуйста, создайте новое.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                        return;
+                    }
+
+                    // Создаем новый эмбед на основе старого
+                    const newEmbed = new EmbedBuilder()
+                        .setTitle(message.embeds[0].title)
+                        .setColor(message.embeds[0].color);
+
+                    // Копируем все поля из старого эмбеда с сохранением цветов
+                    const fields = message.embeds[0].fields.map(field => ({
+                        name: field.name,
+                        value: field.value,
+                        inline: field.inline,
+                        nameColor: ['Heavy Sniper Printed', 'Heavy Sniper Corp', 'Sniper Rifle Corp'].includes(field.name) ? '#ff0000' : undefined
+                    }));
+                    
+                    // Обновляем нужное поле
+                    fields[fieldIndex].value = after;
+                    
+                    // Добавляем все поля в новый эмбед
+                    newEmbed.addFields(fields);
+
+                    // Обновляем сообщение
+                    await message.edit({
+                        embeds: [newEmbed]
+                    });
+
+                    // Отправляем лог в ветку
+                    const threadName = 'Логи';
+                    let thread = message.thread;
+                    
+                    // Если ветки нет у сообщения, создаем её
+                    if (!thread) {
+                        thread = await message.startThread({
+                            name: threadName,
+                            type: ChannelType.PublicThread
+                        });
+                    }
+
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle(`${emoji} Изменение в складе: ${typeName}`)
+                        .setColor('#2b2d31')
+                        .addFields(
+                            { name: 'Было', value: before, inline: true },
+                            { name: 'Стало', value: after, inline: true },
+                            { name: 'Описание', value: description },
+                            { name: 'Автор', value: `<@${interaction.user.id}>` }
+                        )
+                        .setTimestamp();
+
+                    await thread.send({
+                        embeds: [logEmbed]
+                    });
+
+                    await interaction.reply({
+                        content: 'Изменения сохранены!',
+                        flags: MessageFlags.Ephemeral
+                    });
+                } catch (error) {
+                    console.error('Error updating storage:', error);
+                    await interaction.reply({
+                        content: 'Произошла ошибка при обновлении склада.',
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
             }
         }
 
         // ... остальной код ...
     } catch (error) {
         console.error('Error handling interaction:', error);
-        if (interaction.deferred || interaction.replied) {
-            await interaction.followUp({ content: 'Произошла ошибка!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'Произошла ошибка!', ephemeral: true });
+        try {
+            // Check if the error is an Unknown Interaction error
+            if (error.code === 10062) {
+                // Interaction token has expired, we can't respond anymore
+                console.log('Interaction expired, unable to respond');
+                return;
+            }
+            
+            // Try to respond with error message
+            if (interaction.deferred || interaction.replied) {
+                await interaction.followUp({ content: 'Произошла ошибка!', flags: MessageFlags.Ephemeral }).catch(console.error);
+            } else {
+                await interaction.reply({ content: 'Произошла ошибка!', flags: MessageFlags.Ephemeral }).catch(console.error);
+            }
+        } catch (e) {
+            console.error('Failed to send error response:', e);
         }
     }
 });
 
-client.login('token here');
+client.login('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
