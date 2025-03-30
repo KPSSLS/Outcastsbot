@@ -596,6 +596,21 @@ client.on('interactionCreate', async interaction => {
                         typeName = 'Деньги';
                         emoji = '💰';
                         fieldIndex = 1;
+                        break;                        
+                    case 'sniper_rifle_corp':
+                        typeName = '🔴 Sniper Rifle Corp';
+                        emoji = '🔴';
+                        fieldIndex = 6;
+                        break;                        
+                    case 'heavy_sniper_corp':
+                        typeName = '🔴 Heavy Sniper Corp';
+                        emoji = '🔴';
+                        fieldIndex = 7;
+                        break;                        
+                    case 'heavy_sniper_printed':
+                        typeName = '🔴 Heavy Sniper Printed';
+                        emoji = '🔴';
+                        fieldIndex = 8;
                         break;
                     case 'assault_rifle_printed':
                         typeName = 'Assault Rifle Printed';
@@ -607,26 +622,6 @@ client.on('interactionCreate', async interaction => {
                         emoji = '🔫';
                         fieldIndex = 4;
                         break;
-                    case 'carbine_rifle_corp':
-                        typeName = 'Carbine Rifle Corp';
-                        emoji = '🔫';
-                        fieldIndex = 5;
-                        break;
-                    case 'sniper_rifle_corp':
-                        typeName = '🔴 Sniper Rifle Corp';
-                        emoji = '🔴';
-                        fieldIndex = 6;
-                        break;
-                    case 'heavy_sniper_corp':
-                        typeName = '🔴 Heavy Sniper Corp';
-                        emoji = '🔴';
-                        fieldIndex = 7;
-                        break;
-                    case 'heavy_sniper_printed':
-                        typeName = '🔴 Heavy Sniper Printed';
-                        emoji = '🔴';
-                        fieldIndex = 8;
-                        break;
                     case 'pumpshotgun_corp':
                         typeName = 'Pumpshotgun Corp';
                         emoji = '🔫';
@@ -636,6 +631,11 @@ client.on('interactionCreate', async interaction => {
                         typeName = 'Revolver Printed';
                         emoji = '🔫';
                         fieldIndex = 10;
+                        break;                        
+                    case 'carbine_rifle_corp':
+                        typeName = 'Carbine Rifle Corp';
+                        emoji = '🔫';
+                        fieldIndex = 5;
                         break;
                     case 'carbine_rifle_printed':
                         typeName = 'Carbine Rifle Printed';
