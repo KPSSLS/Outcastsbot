@@ -286,9 +286,6 @@ client.on('interactionCreate', async interaction => {
                             { name: '🔴 Sniper Rifle Corp', value: '0', inline: true },
                             { name: '🔴 Heavy Sniper Corp', value: '0', inline: true },
                             { name: '🔴 Heavy Sniper Printed', value: '0', inline: true },
-                            { name: 'Assault Rifle Printed', value: '0', inline: true },
-                            { name: 'Bullpup Rifle Corp', value: '0', inline: true },
-                            { name: 'Pumpshotgun Corp', value: '0', inline: true },
                             { name: 'Revolver Printed', value: '0', inline: true },
                             { name: 'Carbine Rifle Corp', value: '0', inline: true },
                             { name: 'Carbine Rifle Printed', value: '0', inline: true },
@@ -323,21 +320,6 @@ client.on('interactionCreate', async interaction => {
                                 label: 'Heavy Sniper Printed',
                                 value: 'heavy_sniper_printed',
                                 emoji: '🔴'
-                            },
-                            {
-                                label: 'Assault Rifle Printed',
-                                value: 'assault_rifle_printed',
-                                emoji: '🔫'
-                            },
-                            {
-                                label: 'Bullpup Rifle Corp',
-                                value: 'bullpup_rifle_corp',
-                                emoji: '🔫'
-                            },
-                            {
-                                label: 'Pumpshotgun Corp',
-                                value: 'pumpshotgun_corp',
-                                emoji: '🔫'
                             },
                             {
                                 label: 'Revolver Printed',
@@ -600,52 +582,37 @@ client.on('interactionCreate', async interaction => {
                     case 'sniper_rifle_corp':
                         typeName = '🔴 Sniper Rifle Corp';
                         emoji = '🔴';
-                        fieldIndex = 6;
+                        fieldIndex = 2;
                         break;                        
                     case 'heavy_sniper_corp':
                         typeName = '🔴 Heavy Sniper Corp';
                         emoji = '🔴';
-                        fieldIndex = 7;
+                        fieldIndex = 3;
                         break;                        
                     case 'heavy_sniper_printed':
                         typeName = '🔴 Heavy Sniper Printed';
                         emoji = '🔴';
-                        fieldIndex = 8;
-                        break;
-                    case 'assault_rifle_printed':
-                        typeName = 'Assault Rifle Printed';
-                        emoji = '🔫';
-                        fieldIndex = 3;
-                        break;
-                    case 'bullpup_rifle_corp':
-                        typeName = 'Bullpup Rifle Corp';
-                        emoji = '🔫';
                         fieldIndex = 4;
-                        break;
-                    case 'pumpshotgun_corp':
-                        typeName = 'Pumpshotgun Corp';
-                        emoji = '🔫';
-                        fieldIndex = 9;
                         break;
                     case 'revolver_printed':
                         typeName = 'Revolver Printed';
                         emoji = '🔫';
-                        fieldIndex = 10;
-                        break;                        
+                        fieldIndex = 5;
+                        break;
                     case 'carbine_rifle_corp':
                         typeName = 'Carbine Rifle Corp';
                         emoji = '🔫';
-                        fieldIndex = 5;
+                        fieldIndex = 6;
                         break;
                     case 'carbine_rifle_printed':
                         typeName = 'Carbine Rifle Printed';
                         emoji = '🔫';
-                        fieldIndex = 11;
+                        fieldIndex = 7;
                         break;
                     case 'special_carbine_corp':
                         typeName = 'Special Carbine Corp';
                         emoji = '🔫';
-                        fieldIndex = 12;
+                        fieldIndex = 8;
                         break;
                 }
 
@@ -784,52 +751,37 @@ client.on('interactionCreate', async interaction => {
                     case 'sniper_rifle_corp':
                         typeName = '🔴 Sniper Rifle Corp';
                         emoji = '🔴';
-                        fieldIndex = 6;
+                        fieldIndex = 2;
                         break;                        
                     case 'heavy_sniper_corp':
                         typeName = '🔴 Heavy Sniper Corp';
                         emoji = '🔴';
-                        fieldIndex = 7;
+                        fieldIndex = 3;
                         break;                        
                     case 'heavy_sniper_printed':
                         typeName = '🔴 Heavy Sniper Printed';
                         emoji = '🔴';
-                        fieldIndex = 8;
-                        break;
-                    case 'assault_rifle_printed':
-                        typeName = 'Assault Rifle Printed';
-                        emoji = '🔫';
-                        fieldIndex = 3;
-                        break;
-                    case 'bullpup_rifle_corp':
-                        typeName = 'Bullpup Rifle Corp';
-                        emoji = '🔫';
                         fieldIndex = 4;
-                        break;
-                    case 'pumpshotgun_corp':
-                        typeName = 'Pumpshotgun Corp';
-                        emoji = '🔫';
-                        fieldIndex = 9;
                         break;
                     case 'revolver_printed':
                         typeName = 'Revolver Printed';
                         emoji = '🔫';
-                        fieldIndex = 10;
-                        break;                        
+                        fieldIndex = 5;
+                        break;
                     case 'carbine_rifle_corp':
                         typeName = 'Carbine Rifle Corp';
                         emoji = '🔫';
-                        fieldIndex = 5;
+                        fieldIndex = 6;
                         break;
                     case 'carbine_rifle_printed':
                         typeName = 'Carbine Rifle Printed';
                         emoji = '🔫';
-                        fieldIndex = 11;
+                        fieldIndex = 7;
                         break;
                     case 'special_carbine_corp':
                         typeName = 'Special Carbine Corp';
                         emoji = '🔫';
-                        fieldIndex = 12;
+                        fieldIndex = 8;
                         break;
                 }
 
