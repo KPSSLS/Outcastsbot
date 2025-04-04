@@ -44,6 +44,20 @@ function initializeStats() {
 }
 let cooldowns = { applications: {} };
 
+// Функция форматирования времени
+function formatTime(ms) {
+    const days = Math.floor(ms / (24 * 3600000));
+    const hours = Math.floor((ms % (24 * 3600000)) / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days}д`);
+    if (hours > 0) parts.push(`${hours}ч`);
+    if (minutes > 0) parts.push(`${minutes}м`);
+    
+    return parts.length > 0 ? parts.join(' ') : '0м';
+}
+
 // Временные данные для отслеживания голосовых каналов
 const voiceStates = new Map();
 
