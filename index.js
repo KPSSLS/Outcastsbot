@@ -8,7 +8,9 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences
     ]
 });
 
@@ -22,8 +24,16 @@ const cooldownsPath = path.join(__dirname, 'cooldowns.json');
 
 // Загрузка данных
 let config = { applicationChannelId: null, acceptedRoleId: null };
-let stats = { acceptedApplications: {} };
+let stats = { 
+    acceptedApplications: {},
+    voiceTime: {},
+    messageCount: {},
+    rageActivity: {}
+};
 let cooldowns = { applications: {} };
+
+// Временные данные для отслеживания голосовых каналов
+const voiceStates = new Map();
 
 // Функции загрузки и сохранения данных
 function loadConfig() {
@@ -122,10 +132,92 @@ loadConfig();
 loadStats();
 loadCooldowns();
 
+// Функции для работы со статистикой
+function updateVoiceTime(userId) {
+    if (!stats.voiceTime[userId]) {
+        stats.voiceTime[userId] = 0;
+    }
+    const state = voiceStates.get(userId);
+    if (state) {
+        const now = Date.now();
+        stats.voiceTime[userId] += now - state.joinTime;
+        state.joinTime = now;
+        saveStats();
+    }
+}
+
+function incrementMessageCount(userId) {
+    if (!stats.messageCount[userId]) {
+        stats.messageCount[userId] = 0;
+    }
+    stats.messageCount[userId]++;
+    saveStats();
+}
+
+function updateRageActivity(userId) {
+    if (!stats.rageActivity[userId]) {
+        stats.rageActivity[userId] = 0;
+    }
+    stats.rageActivity[userId]++;
+    saveStats();
+}
+
+// Обработчики событий
+client.on('voiceStateUpdate', (oldState, newState) => {
+    const userId = oldState.member.user.id;
+
+    // Пользователь присоединился к голосовому каналу
+    if (!oldState.channelId && newState.channelId) {
+        voiceStates.set(userId, { joinTime: Date.now() });
+    }
+    // Пользователь покинул голосовой канал
+    else if (oldState.channelId && !newState.channelId) {
+        if (voiceStates.has(userId)) {
+            updateVoiceTime(userId);
+            voiceStates.delete(userId);
+        }
+    }
+    // Пользователь переключился между каналами
+    else if (oldState.channelId && newState.channelId) {
+        if (voiceStates.has(userId)) {
+            updateVoiceTime(userId);
+            voiceStates.set(userId, { joinTime: Date.now() });
+        }
+    }
+});
+
+client.on('messageCreate', (message) => {
+    if (!message.author.bot) {
+        incrementMessageCount(message.author.id);
+    }
+});
+
+client.on('presenceUpdate', (oldPresence, newPresence) => {
+    const userId = newPresence.userId;
+    const activities = newPresence.activities;
+
+    // Проверяем наличие активности RAGE:MP
+    const rageActivity = activities.find(activity => 
+        activity.name.toLowerCase().includes('rage') || 
+        activity.name.toLowerCase().includes('rage:mp') ||
+        activity.name.toLowerCase().includes('gta:mp'));
+
+    if (rageActivity) {
+        updateRageActivity(userId);
+    }
+});
+
 client.once('ready', async () => {
     console.log('Bot is ready!');
     
-    const commands = [
+    // Функция форматирования времени
+function formatTime(ms) {
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    return `${hours}ч ${minutes}м`;
+}
+
+const commands = [
         {
             name: 'заявка',
             description: 'Отправить форму заявки'
@@ -183,58 +275,54 @@ client.on('interactionCreate', async interaction => {
         if (interaction.isCommand()) {
             switch (interaction.commandName) {
                 case 'статистика':
-                    const sortedStats = Object.entries(stats.acceptedApplications)
-                        .sort(([, a], [, b]) => b - a);
-                    
-                    if (sortedStats.length === 0) {
-                        await interaction.reply({
-                            content: 'Статистика пуста. Пока никто не принимал заявки.',
-                            flags: MessageFlags.Ephemeral
-                        });
-                        return;
-                    }
-
-                    const pages = [];
-                    for (let i = 0; i < sortedStats.length; i += 10) {
-                        const pageStats = sortedStats.slice(i, i + 10);
-                        const embed = new EmbedBuilder()
-                            .setTitle('📊 Статистика принятых заявок')
-                            .setColor('#2b2d31')
-                            .setDescription(
-                                await Promise.all(pageStats.map(async ([userId, count], index) => {
-                                    try {
-                                        const user = await client.users.fetch(userId);
-                                        return `${i + index + 1}. ${user.tag}: \`${count}\` принятых заявок`;
-                                    } catch {
-                                        return `${i + index + 1}. Неизвестный пользователь: \`${count}\` принятых заявок`;
-                                    }
-                                })).then(lines => lines.join('\n'))
-                            )
-                            .setFooter({ text: `Страница ${Math.floor(i / 10) + 1}/${Math.ceil(sortedStats.length / 10)}` });
-                        pages.push(embed);
-                    }
-
-                    const uniqueId = Date.now().toString();
-                    activeStatistics.set(uniqueId, { pages, currentPage: 0 });
-
-                    const navigationRow = new ActionRowBuilder()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId(`prev_${uniqueId}`)
-                                .setLabel('◀')
-                                .setStyle(ButtonStyle.Primary)
-                                .setDisabled(true),
-                            new ButtonBuilder()
-                                .setCustomId(`next_${uniqueId}`)
-                                .setLabel('▶')
-                                .setStyle(ButtonStyle.Primary)
-                                .setDisabled(pages.length <= 1)
+                    // Собираем все виды статистики
+                    const voiceStats = Object.entries(stats.voiceTime)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([userId, time]) => 
+                            `<@${userId}> - ${formatTime(time)}`
                         );
 
-                    await interaction.reply({
-                        embeds: [pages[0]],
-                        components: [navigationRow]
-                    });
+                    const messageStats = Object.entries(stats.messageCount)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([userId, count]) => 
+                            `<@${userId}> - ${count} сообщений`
+                        );
+
+                    const rageStats = Object.entries(stats.rageActivity)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([userId, count]) => 
+                            `<@${userId}> - ${count} раз замечен в игре`
+                        );
+
+                    const acceptedStats = Object.entries(stats.acceptedApplications)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([userId, count]) => 
+                            `<@${userId}> - ${count} принятых заявок`
+                        );
+
+                    // Создаем эмбеды для каждой категории
+                    const voiceEmbed = new EmbedBuilder()
+                        .setTitle('🎤 Статистика голосовых каналов')
+                        .setColor('#2b2d31')
+                        .setDescription(voiceStats.join('\n') || 'Пока нет данных');
+
+                    const messageEmbed = new EmbedBuilder()
+                        .setTitle('💬 Статистика сообщений')
+                        .setColor('#2b2d31')
+                        .setDescription(messageStats.join('\n') || 'Пока нет данных');
+
+                    const rageEmbed = new EmbedBuilder()
+                        .setTitle('🎮 Статистика RAGE:MP')
+                        .setColor('#2b2d31')
+                        .setDescription(rageStats.join('\n') || 'Пока нет данных');
+
+                    const acceptedEmbed = new EmbedBuilder()
+                        .setTitle('📈 Статистика принятых заявок')
+                        .setColor('#2b2d31')
+                        .setDescription(acceptedStats.join('\n') || 'Пока нет данных');
+
+                    // Отправляем все эмбеды в одном сообщении
+                    await interaction.reply({ embeds: [voiceEmbed, messageEmbed, rageEmbed, acceptedEmbed] });
                     break;
 
                 case 'заявка':
