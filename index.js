@@ -30,6 +30,14 @@ let stats = {
     messageCount: {},
     rageActivity: {}
 };
+
+// Инициализируем объекты статистики, если они не существуют
+function initializeStats() {
+    if (!stats.voiceTime) stats.voiceTime = {};
+    if (!stats.messageCount) stats.messageCount = {};
+    if (!stats.rageActivity) stats.rageActivity = {};
+    if (!stats.acceptedApplications) stats.acceptedApplications = {};
+}
 let cooldowns = { applications: {} };
 
 // Временные данные для отслеживания голосовых каналов
@@ -131,6 +139,7 @@ function setCooldown(userId) {
 loadConfig();
 loadStats();
 loadCooldowns();
+initializeStats();
 
 // Функции для работы со статистикой
 function updateVoiceTime(userId) {
@@ -276,25 +285,25 @@ client.on('interactionCreate', async interaction => {
             switch (interaction.commandName) {
                 case 'статистика':
                     // Собираем все виды статистики
-                    const voiceStats = Object.entries(stats.voiceTime)
+                    const voiceStats = Object.entries(stats.voiceTime || {})
                         .sort(([, a], [, b]) => b - a)
                         .map(([userId, time]) => 
                             `<@${userId}> - ${formatTime(time)}`
                         );
 
-                    const messageStats = Object.entries(stats.messageCount)
+                    const messageStats = Object.entries(stats.messageCount || {})
                         .sort(([, a], [, b]) => b - a)
                         .map(([userId, count]) => 
                             `<@${userId}> - ${count} сообщений`
                         );
 
-                    const rageStats = Object.entries(stats.rageActivity)
+                    const rageStats = Object.entries(stats.rageActivity || {})
                         .sort(([, a], [, b]) => b - a)
                         .map(([userId, count]) => 
                             `<@${userId}> - ${count} раз замечен в игре`
                         );
 
-                    const acceptedStats = Object.entries(stats.acceptedApplications)
+                    const acceptedStats = Object.entries(stats.acceptedApplications || {})
                         .sort(([, a], [, b]) => b - a)
                         .map(([userId, count]) => 
                             `<@${userId}> - ${count} принятых заявок`
