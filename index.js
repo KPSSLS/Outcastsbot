@@ -26,16 +26,20 @@ const cooldownsPath = path.join(__dirname, 'cooldowns.json');
 let config = { applicationChannelId: null, acceptedRoleId: null };
 let stats = { 
     acceptedApplications: {},
-    voiceTime: {},
     messageCount: {},
-    rageActivity: {}
+    rageActivity: {}, // Время в RAGE:MP в миллисекундах
+    rageLastSeen: {}, // Время последнего обнаружения в игре
+    voiceActivity: {}, // Время в голосовых каналах в миллисекундах
+    voiceLastSeen: {} // Время последнего обнаружения в голосовом канале
 };
 
 // Инициализируем объекты статистики, если они не существуют
 function initializeStats() {
-    if (!stats.voiceTime) stats.voiceTime = {};
     if (!stats.messageCount) stats.messageCount = {};
     if (!stats.rageActivity) stats.rageActivity = {};
+    if (!stats.rageLastSeen) stats.rageLastSeen = {};
+    if (!stats.voiceActivity) stats.voiceActivity = {};
+    if (!stats.voiceLastSeen) stats.voiceLastSeen = {};
     if (!stats.acceptedApplications) stats.acceptedApplications = {};
 }
 let cooldowns = { applications: {} };
@@ -174,23 +178,32 @@ function updateRageActivity(userId) {
 // Обработчики событий
 client.on('voiceStateUpdate', (oldState, newState) => {
     const userId = oldState.member.user.id;
+    const now = Date.now();
 
     // Пользователь присоединился к голосовому каналу
     if (!oldState.channelId && newState.channelId) {
-        voiceStates.set(userId, { joinTime: Date.now() });
+        stats.voiceLastSeen[userId] = now;
+        saveStats();
     }
     // Пользователь покинул голосовой канал
     else if (oldState.channelId && !newState.channelId) {
-        if (voiceStates.has(userId)) {
-            updateVoiceTime(userId);
-            voiceStates.delete(userId);
+        if (stats.voiceLastSeen[userId]) {
+            const timePassed = now - stats.voiceLastSeen[userId];
+            stats.voiceActivity[userId] = (stats.voiceActivity[userId] || 0) + timePassed;
+            delete stats.voiceLastSeen[userId];
+            saveStats();
         }
     }
     // Пользователь переключился между каналами
     else if (oldState.channelId && newState.channelId) {
-        if (voiceStates.has(userId)) {
-            updateVoiceTime(userId);
-            voiceStates.set(userId, { joinTime: Date.now() });
+        if (stats.voiceLastSeen[userId]) {
+            const timePassed = now - stats.voiceLastSeen[userId];
+            stats.voiceActivity[userId] = (stats.voiceActivity[userId] || 0) + timePassed;
+            stats.voiceLastSeen[userId] = now;
+            saveStats();
+        } else {
+            stats.voiceLastSeen[userId] = now;
+            saveStats();
         }
     }
 });
@@ -211,8 +224,22 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
         activity.name.toLowerCase().includes('rage:mp') ||
         activity.name.toLowerCase().includes('gta:mp'));
 
+    const now = Date.now();
+    
     if (rageActivity) {
-        updateRageActivity(userId);
+        // Если пользователь уже был в игре, обновляем время
+        if (stats.rageLastSeen[userId]) {
+            const timePassed = now - stats.rageLastSeen[userId];
+            stats.rageActivity[userId] = (stats.rageActivity[userId] || 0) + timePassed;
+        }
+        stats.rageLastSeen[userId] = now;
+        saveStats();
+    } else if (stats.rageLastSeen[userId]) {
+        // Если пользователь вышел из игры, засчитываем время
+        const timePassed = now - stats.rageLastSeen[userId];
+        stats.rageActivity[userId] = (stats.rageActivity[userId] || 0) + timePassed;
+        delete stats.rageLastSeen[userId];
+        saveStats();
     }
 });
 
@@ -221,9 +248,16 @@ client.once('ready', async () => {
     
     // Функция форматирования времени
 function formatTime(ms) {
-    const hours = Math.floor(ms / 3600000);
+    const days = Math.floor(ms / (24 * 3600000));
+    const hours = Math.floor((ms % (24 * 3600000)) / 3600000);
     const minutes = Math.floor((ms % 3600000) / 60000);
-    return `${hours}ч ${minutes}м`;
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days}д`);
+    if (hours > 0) parts.push(`${hours}ч`);
+    if (minutes > 0) parts.push(`${minutes}м`);
+    
+    return parts.length > 0 ? parts.join(' ') : '0м';
 }
 
 const commands = [
@@ -285,22 +319,39 @@ client.on('interactionCreate', async interaction => {
             switch (interaction.commandName) {
                 case 'статистика':
                     // Собираем все виды статистики
-                    const voiceStats = Object.entries(stats.voiceTime || {})
-                        .sort(([, a], [, b]) => b - a)
-                        .map(([userId, time]) => 
-                            `<@${userId}> - ${formatTime(time)}`
-                        );
-
                     const messageStats = Object.entries(stats.messageCount || {})
                         .sort(([, a], [, b]) => b - a)
                         .map(([userId, count]) => 
                             `<@${userId}> - ${count} сообщений`
                         );
 
+                    // Обновляем время для тех, кто сейчас в игре или в голосовом канале
+                    const now = Date.now();
+                    
+                    // Обновляем время RAGE:MP
+                    for (const [userId, lastSeen] of Object.entries(stats.rageLastSeen || {})) {
+                        const timePassed = now - lastSeen;
+                        stats.rageActivity[userId] = (stats.rageActivity[userId] || 0) + timePassed;
+                        stats.rageLastSeen[userId] = now;
+                    }
+
+                    // Обновляем время в голосовых каналах
+                    for (const [userId, lastSeen] of Object.entries(stats.voiceLastSeen || {})) {
+                        const timePassed = now - lastSeen;
+                        stats.voiceActivity[userId] = (stats.voiceActivity[userId] || 0) + timePassed;
+                        stats.voiceLastSeen[userId] = now;
+                    }
+
+                    const voiceStats = Object.entries(stats.voiceActivity || {})
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([userId, time]) => 
+                            `<@${userId}> - ${formatTime(time)}`
+                        );
+
                     const rageStats = Object.entries(stats.rageActivity || {})
                         .sort(([, a], [, b]) => b - a)
-                        .map(([userId, count]) => 
-                            `<@${userId}> - ${count} раз замечен в игре`
+                        .map(([userId, time]) => 
+                            `<@${userId}> - ${formatTime(time)}`
                         );
 
                     const acceptedStats = Object.entries(stats.acceptedApplications || {})
@@ -310,18 +361,18 @@ client.on('interactionCreate', async interaction => {
                         );
 
                     // Создаем эмбеды для каждой категории
-                    const voiceEmbed = new EmbedBuilder()
-                        .setTitle('🎤 Статистика голосовых каналов')
-                        .setColor('#2b2d31')
-                        .setDescription(voiceStats.join('\n') || 'Пока нет данных');
-
                     const messageEmbed = new EmbedBuilder()
                         .setTitle('💬 Статистика сообщений')
                         .setColor('#2b2d31')
                         .setDescription(messageStats.join('\n') || 'Пока нет данных');
 
+                    const voiceEmbed = new EmbedBuilder()
+                        .setTitle('🎤 Статистика времени в голосовых каналах')
+                        .setColor('#2b2d31')
+                        .setDescription(voiceStats.join('\n') || 'Пока нет данных');
+
                     const rageEmbed = new EmbedBuilder()
-                        .setTitle('🎮 Статистика RAGE:MP')
+                        .setTitle('🎮 Статистика времени в RAGE:MP')
                         .setColor('#2b2d31')
                         .setDescription(rageStats.join('\n') || 'Пока нет данных');
 
@@ -331,7 +382,7 @@ client.on('interactionCreate', async interaction => {
                         .setDescription(acceptedStats.join('\n') || 'Пока нет данных');
 
                     // Отправляем все эмбеды в одном сообщении
-                    await interaction.reply({ embeds: [voiceEmbed, messageEmbed, rageEmbed, acceptedEmbed] });
+                    await interaction.reply({ embeds: [messageEmbed, voiceEmbed, rageEmbed, acceptedEmbed] });
                     break;
 
                 case 'заявка':
