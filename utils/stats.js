@@ -2,14 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 
-let stats = {
-    messageCount: {},
-    rageActivity: {},
-    rageLastSeen: {},
-    voiceActivity: {},
-    voiceLastSeen: {},
-    acceptedApplications: {}
-};
+let stats = {};
+
+function initializeStats() {
+    if (!stats.messageCount) stats.messageCount = {};
+    if (!stats.rageActivity) stats.rageActivity = {};
+    if (!stats.rageLastSeen) stats.rageLastSeen = {};
+    if (!stats.voiceActivity) stats.voiceActivity = {};
+    if (!stats.voiceLastSeen) stats.voiceLastSeen = {};
+    if (!stats.acceptedApplications) stats.acceptedApplications = {};
+}
 
 function loadStats() {
     try {
@@ -17,8 +19,10 @@ function loadStats() {
             const data = JSON.parse(fs.readFileSync(paths.statsPath));
             stats = { ...stats, ...data };
         }
+        initializeStats(); // Инициализируем отсутствующие поля
     } catch (error) {
         console.error('Error loading stats:', error);
+        initializeStats(); // Инициализируем поля при ошибке
         saveStats(); // Create the file if it doesn't exist
     }
 }
@@ -38,5 +42,6 @@ function getStats() {
 module.exports = {
     getStats,
     loadStats,
-    saveStats
+    saveStats,
+    initializeStats
 };
