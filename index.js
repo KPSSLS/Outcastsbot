@@ -16,14 +16,6 @@ const client = new Client({
     partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
-// Создаем команды
-const commands = [
-    new SlashCommandBuilder()
-        .setName('table')
-        .setDescription('Открыть форму для заполнения банковского счета')
-        .toJSON()
-];
-
 // Константы
 const APPLICATION_COOLDOWN = 30 * 60 * 1000; // 30 минут в миллисекундах
 
@@ -169,6 +161,14 @@ loadStats();
 loadCooldowns();
 initializeStats();
 
+// Создаем команды
+const commands = [
+    new SlashCommandBuilder()
+        .setName('table')
+        .setDescription('Открыть форму для заполнения банковского счета')
+        .toJSON()
+];
+
 // Функции для работы со статистикой
 function updateVoiceTime(userId) {
     if (!stats.voiceTime[userId]) {
@@ -295,8 +295,12 @@ client.once('ready', async () => {
     try {
         console.log('Started refreshing application (/) commands.');
         // Регистрируем команды глобально
-        await client.application.commands.set(commands);
-        console.log('Successfully reloaded application (/) commands.');
+        const tableCommand = new SlashCommandBuilder()
+            .setName('table')
+            .setDescription('Открыть форму для заполнения банковского счета');
+
+        await client.application.commands.create(tableCommand);
+        console.log('Successfully registered table command.');
     } catch (error) {
         console.error('Error registering slash commands:', error);
     }
