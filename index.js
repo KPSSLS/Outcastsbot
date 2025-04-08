@@ -295,23 +295,55 @@ async function addToSheet(username, bankAccount) {
 async function deployCommands() {
     const rest = new REST().setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
 
-    const tableCommand = new SlashCommandBuilder()
-        .setName('table')
-        .setDescription('Открыть форму для заполнения банковского счета');
+    const commands = [
+        new SlashCommandBuilder()
+            .setName('table')
+            .setDescription('Открыть форму для заполнения банковского счета'),
+        
+        new SlashCommandBuilder()
+            .setName('application')
+            .setDescription('Подать заявку на вступление'),
+
+        new SlashCommandBuilder()
+            .setName('accept')
+            .setDescription('Принять заявку')
+            .addUserOption(option =>
+                option.setName('user')
+                    .setDescription('Пользователь для принятия')
+                    .setRequired(true)
+            ),
+
+        new SlashCommandBuilder()
+            .setName('stats')
+            .setDescription('Посмотреть статистику')
+            .addUserOption(option =>
+                option.setName('user')
+                    .setDescription('Пользователь для просмотра статистики')
+                    .setRequired(true)
+            ),
+
+        new SlashCommandBuilder()
+            .setName('setup')
+            .setDescription('Настроить канал для заявок')
+            .addChannelOption(option =>
+                option.setName('channel')
+                    .setDescription('Канал для заявок')
+                    .setRequired(true)
+            )
+            .addRoleOption(option =>
+                option.setName('role')
+                    .setDescription('Роль для принятых заявок')
+                    .setRequired(true)
+            )
+    ];
 
     try {
         console.log('Started deploying slash commands...');
 
-        // Сначала удаляем все существующие команды
+        // Регистрируем все команды
         await rest.put(
             Routes.applicationCommands('1355683641950212167'),
-            { body: [] }
-        );
-
-        // Затем добавляем новые команды
-        await rest.put(
-            Routes.applicationCommands('1355683641950212167'),
-            { body: [tableCommand.toJSON()] }
+            { body: commands.map(command => command.toJSON()) }
         );
 
         console.log('Successfully deployed slash commands!');
