@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { addFinanceRecord } = require('./utils/baserow');
+const { addFinanceRecord, addStatsRecord } = require('./utils/baserow');
 
 const client = new Client({
     intents: [
@@ -367,14 +367,14 @@ client.on('interactionCreate', async interaction => {
 
             await addFinanceRecord(accountNumber, nickname);
             await interaction.reply({
-                content: 'Ваши данные успешно сохранены в Baserow!',
-                ephemeral: true
+                content: `Данные пользователя <@${interaction.user.id}> успешно сохранены!`,
+                ephemeral: false
             });
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
             await interaction.reply({
-                content: 'Произошла ошибка при сохранении данных.',
-                ephemeral: true
+                content: `Произошла ошибка при сохранении данных для <@${interaction.user.id}>.`,
+                ephemeral: false
             });
         }
         return;
@@ -395,7 +395,7 @@ client.on('interactionCreate', async interaction => {
                     await interaction.reply({
                         content: 'Нажмите на кнопку ниже, чтобы заполнить финансовые данные:',
                         components: [financeRow],
-                        ephemeral: true
+                        ephemeral: false
                     });
                     break;
                 case 'статистика':
@@ -405,6 +405,16 @@ client.on('interactionCreate', async interaction => {
                         .map(([userId, count]) => 
                             `<@${userId}> - ${count} сообщений`
                         );
+
+                    // Отправляем статистику принятых заявок в Baserow
+                    try {
+                        const acceptedStats = stats.acceptedApplications || {};
+                        for (const [userId, count] of Object.entries(acceptedStats)) {
+                            await addStatsRecord(userId, count);
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при отправке статистики в Baserow:', error);
+                    }
 
                     // Обновляем время для тех, кто сейчас в игре или в голосовом канале
                     const now = Date.now();
