@@ -12,7 +12,8 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildPresences
-    ]
+    ],
+    partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
 // Константы
@@ -283,13 +284,17 @@ async function addToSheet(username, bankAccount) {
 client.once('ready', async () => {
     console.log('Bot is ready!');
     
-    const tableCommand = new SlashCommandBuilder()
-        .setName('table')
-        .setDescription('Открыть форму для заполнения банковского счета');
+    const slashCommands = [
+        new SlashCommandBuilder()
+            .setName('table')
+            .setDescription('Открыть форму для заполнения банковского счета')
+            .toJSON()
+    ];
 
     try {
-        await client.application.commands.set([tableCommand]);
-        console.log('Slash commands registered successfully!');
+        console.log('Started refreshing application (/) commands.');
+        await client.application.commands.set(commands);
+        console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error('Error registering slash commands:', error);
     }
