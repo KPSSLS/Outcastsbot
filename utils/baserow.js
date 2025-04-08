@@ -12,7 +12,7 @@ async function addFinanceRecord(accountNumber, nickname) {
             {
                 "Номер счета": accountNumber,
                 "Никнейм": nickname,
-                "Дата": new Date().toISOString()
+                "Дата": new Date().toISOString().split('T')[0]
             },
             {
                 headers: {
@@ -37,7 +37,7 @@ async function addStatsRecord(userId, acceptedCount) {
             {
                 "Пользователь": userId,
                 "Количество принятых": acceptedCount,
-                "Дата": new Date().toISOString()
+                "Дата": new Date().toISOString().split('T')[0]
             },
             {
                 headers: {

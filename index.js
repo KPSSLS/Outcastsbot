@@ -393,7 +393,7 @@ client.on('interactionCreate', async interaction => {
                         .addComponents(financeButton);
 
                     await interaction.reply({
-                        content: 'Для заполнения финансовых данных нажмите на кнопку ниже:',
+                        content: 'Форма для заполнения финансовых данных:',
                         components: [financeRow],
                         ephemeral: false
                     });
