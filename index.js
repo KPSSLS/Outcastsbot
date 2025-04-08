@@ -367,14 +367,14 @@ client.on('interactionCreate', async interaction => {
 
             await addFinanceRecord(accountNumber, nickname);
             await interaction.reply({
-                content: `Данные пользователя <@${interaction.user.id}> успешно сохранены!`,
-                ephemeral: false
+                content: 'Ваши данные успешно сохранены!',
+                ephemeral: true
             });
         } catch (error) {
             console.error('Ошибка при сохранении данных:', error);
             await interaction.reply({
-                content: `Произошла ошибка при сохранении данных для <@${interaction.user.id}>.`,
-                ephemeral: false
+                content: 'Произошла ошибка при сохранении данных.',
+                ephemeral: true
             });
         }
         return;
@@ -393,7 +393,7 @@ client.on('interactionCreate', async interaction => {
                         .addComponents(financeButton);
 
                     await interaction.reply({
-                        content: 'Нажмите на кнопку ниже, чтобы заполнить финансовые данные:',
+                        content: 'Для заполнения финансовых данных нажмите на кнопку ниже:',
                         components: [financeRow],
                         ephemeral: false
                     });
