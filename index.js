@@ -1,4 +1,5 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, SlashCommandBuilder, Routes } = require('discord.js');
+const { REST } = require('discord.js');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const fs = require('fs');
 const path = require('path');
@@ -161,13 +162,7 @@ loadStats();
 loadCooldowns();
 initializeStats();
 
-// Создаем команды
-const commands = [
-    new SlashCommandBuilder()
-        .setName('table')
-        .setDescription('Открыть форму для заполнения банковского счета')
-        .toJSON()
-];
+
 
 // Функции для работы со статистикой
 function updateVoiceTime(userId) {
@@ -289,18 +284,30 @@ async function addToSheet(username, bankAccount) {
 }
 
 // Регистрация слэш-команд
+// Конфигурация слеш-команд
+const slashCommands = [
+    {
+        name: 'table',
+        description: 'Открыть форму для заполнения банковского счета'
+    }
+];
+
+// Создаем REST клиент
+const rest = new REST({ version: '10' }).setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
+
+// Регистрация команд
 client.once('ready', async () => {
     console.log('Bot is ready!');
     
     try {
         console.log('Started refreshing application (/) commands.');
-        // Регистрируем команды глобально
-        const tableCommand = new SlashCommandBuilder()
-            .setName('table')
-            .setDescription('Открыть форму для заполнения банковского счета');
 
-        await client.application.commands.create(tableCommand);
-        console.log('Successfully registered table command.');
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: slashCommands }
+        );
+
+        console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error('Error registering slash commands:', error);
     }
