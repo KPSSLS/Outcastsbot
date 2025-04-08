@@ -1,38 +1,42 @@
 const fs = require('fs');
 const path = require('path');
 
-const statsPath = path.join(__dirname, '..', 'stats.json');
-const cooldownsPath = path.join(__dirname, '..', 'cooldowns.json');
 
 let stats = {
-    acceptedApplications: {},
     messageCount: {},
-    rageActivity: {}, // Время в RAGE:MP в миллисекундах
-    rageLastSeen: {}, // Время последнего обнаружения в игре
-    voiceActivity: {}, // Время в голосовых каналах в миллисекундах
-    voiceLastSeen: {} // Время последнего обнаружения в голосовом канале
+    rageActivity: {},
+    rageLastSeen: {},
+    voiceActivity: {},
+    voiceLastSeen: {},
+    acceptedApplications: {}
 };
 
 function loadStats() {
     try {
-        if (fs.existsSync(statsPath)) {
-            stats = JSON.parse(fs.readFileSync(statsPath));
+        if (fs.existsSync(paths.statsPath)) {
+            const data = JSON.parse(fs.readFileSync(paths.statsPath));
+            stats = { ...stats, ...data };
         }
     } catch (error) {
         console.error('Error loading stats:', error);
+        saveStats(); // Create the file if it doesn't exist
     }
 }
 
 function saveStats() {
     try {
-        fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+        fs.writeFileSync(paths.statsPath, JSON.stringify(stats, null, 2));
     } catch (error) {
         console.error('Error saving stats:', error);
     }
 }
 
+function getStats() {
+    return stats;
+}
+
 module.exports = {
-    stats,
+    getStats,
     loadStats,
     saveStats
 };

@@ -1,8 +1,12 @@
-const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelType } = require('discord.js');
+const { config, loadConfig } = require('./config/config');
+const { getStats, loadStats, saveStats } = require('./utils/stats');
+const { getCooldowns, loadCooldowns, saveCooldowns } = require('./utils/cooldowns');
+const { addToSheet } = require('./utils/sheets');
 
-// Создаем клиента Discord
+// Initialize client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -42,162 +46,9 @@ for (const file of eventFiles) {
         client.on(event.name, (...args) => event.execute(...args));
     }
 }
-function initializeStats() {
-    if (!stats.messageCount) stats.messageCount = {};
-    if (!stats.rageActivity) stats.rageActivity = {};
-    if (!stats.rageLastSeen) stats.rageLastSeen = {};
-    if (!stats.voiceActivity) stats.voiceActivity = {};
-    if (!stats.voiceLastSeen) stats.voiceLastSeen = {};
-    if (!stats.acceptedApplications) stats.acceptedApplications = {};
-}
-let cooldowns = { applications: {} };
-
-// Функция форматирования времени
-function formatTime(ms) {
-    const days = Math.floor(ms / (24 * 3600000));
-    const hours = Math.floor((ms % (24 * 3600000)) / 3600000);
-    const minutes = Math.floor((ms % 3600000) / 60000);
-    
-    const parts = [];
-    if (days > 0) parts.push(`${days}д`);
-    if (hours > 0) parts.push(`${hours}ч`);
-    if (minutes > 0) parts.push(`${minutes}м`);
-    
-    return parts.length > 0 ? parts.join(' ') : '0м';
-}
 
 // Временные данные для отслеживания голосовых каналов
 const voiceStates = new Map();
-
-// Функции загрузки и сохранения данных
-function loadConfig() {
-    try {
-        const data = fs.readFileSync(configPath, 'utf8');
-        config = JSON.parse(data);
-        console.log('Configuration loaded successfully');
-    } catch (error) {
-        console.error('Error loading configuration:', error);
-    }
-}
-
-function saveConfig() {
-    try {
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
-        console.log('Configuration saved successfully');
-    } catch (error) {
-        console.error('Error saving configuration:', error);
-    }
-}
-
-function loadStats() {
-    try {
-        const data = fs.readFileSync(statsPath, 'utf8');
-        stats = JSON.parse(data);
-        console.log('Statistics loaded successfully');
-    } catch (error) {
-        console.error('Error loading statistics:', error);
-        // Если файл не существует, создаем его
-        saveStats();
-    }
-}
-
-function saveStats() {
-    try {
-        fs.writeFileSync(statsPath, JSON.stringify(stats, null, 4));
-        console.log('Statistics saved successfully');
-    } catch (error) {
-        console.error('Error saving statistics:', error);
-    }
-}
-
-function loadCooldowns() {
-    try {
-        const data = fs.readFileSync(cooldownsPath, 'utf8');
-        cooldowns = JSON.parse(data);
-        console.log('Cooldowns loaded successfully');
-    } catch (error) {
-        console.error('Error loading cooldowns:', error);
-        saveCooldowns();
-    }
-}
-
-function saveCooldowns() {
-    try {
-        fs.writeFileSync(cooldownsPath, JSON.stringify(cooldowns, null, 4));
-        console.log('Cooldowns saved successfully');
-    } catch (error) {
-        console.error('Error saving cooldowns:', error);
-    }
-}
-
-function incrementAcceptedApplications(userId) {
-    if (!stats.acceptedApplications[userId]) {
-        stats.acceptedApplications[userId] = 0;
-    }
-    stats.acceptedApplications[userId]++;
-    saveStats();
-}
-
-function formatTimeLeft(ms) {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}м ${seconds}с`;
-}
-
-function checkCooldown(userId) {
-    const lastApplication = cooldowns.applications[userId];
-    if (!lastApplication) return null;
-
-    const now = Date.now();
-    const timePassed = now - lastApplication;
-    if (timePassed < APPLICATION_COOLDOWN) {
-        return APPLICATION_COOLDOWN - timePassed;
-    }
-    return null;
-}
-
-function setCooldown(userId) {
-    cooldowns.applications[userId] = Date.now();
-    saveCooldowns();
-}
-
-// Загружаем все данные при запуске
-loadConfig();
-loadStats();
-loadCooldowns();
-initializeStats();
-
-
-
-// Функции для работы со статистикой
-function updateVoiceTime(userId) {
-    if (!stats.voiceTime[userId]) {
-        stats.voiceTime[userId] = 0;
-    }
-    const state = voiceStates.get(userId);
-    if (state) {
-        const now = Date.now();
-        stats.voiceTime[userId] += now - state.joinTime;
-        state.joinTime = now;
-        saveStats();
-    }
-}
-
-function incrementMessageCount(userId) {
-    if (!stats.messageCount[userId]) {
-        stats.messageCount[userId] = 0;
-    }
-    stats.messageCount[userId]++;
-    saveStats();
-}
-
-function updateRageActivity(userId) {
-    if (!stats.rageActivity[userId]) {
-        stats.rageActivity[userId] = 0;
-    }
-    stats.rageActivity[userId]++;
-    saveStats();
-}
 
 // Обработчики событий
 client.on('voiceStateUpdate', (oldState, newState) => {
