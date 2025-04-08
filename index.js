@@ -284,33 +284,37 @@ async function addToSheet(username, bankAccount) {
 }
 
 // Регистрация слэш-команд
-// Конфигурация слеш-команд
-const slashCommands = [
-    {
-        name: 'table',
-        description: 'Открыть форму для заполнения банковского счета'
-    }
-];
+// Функция для регистрации команд
+async function registerCommands(clientId) {
+    const commands = [
+        new SlashCommandBuilder()
+            .setName('table')
+            .setDescription('Открыть форму для заполнения банковского счета')
+    ];
 
-// Создаем REST клиент
-const rest = new REST({ version: '10' }).setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
+    const rest = new REST({ version: '10' }).setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
+
+    try {
+        console.log('Started refreshing application (/) commands.');
+
+        // Регистрируем команды глобально
+        const data = await rest.put(
+            Routes.applicationCommands(clientId),
+            { body: commands.map(command => command.toJSON()) }
+        );
+
+        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+        return true;
+    } catch (error) {
+        console.error('Error registering slash commands:', error);
+        return false;
+    }
+}
 
 // Регистрация команд
 client.once('ready', async () => {
     console.log('Bot is ready!');
-    
-    try {
-        console.log('Started refreshing application (/) commands.');
-
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: slashCommands }
-        );
-
-        console.log('Successfully reloaded application (/) commands.');
-    } catch (error) {
-        console.error('Error registering slash commands:', error);
-    }
+    await registerCommands(client.user.id);
     
     // Функция форматирования времени
 function formatTime(ms) {
@@ -380,10 +384,13 @@ const activeStatistics = new Map();
 const storageMessages = new Map();
 
 client.on('interactionCreate', async interaction => {
+    // Обрабатываем только нужные типы взаимодействий
     if (!interaction.isCommand() && !interaction.isButton() && !interaction.isModalSubmit()) return;
 
+    console.log('Interaction received:', interaction.type, interaction.commandName);
+
     // Обработка команды /table
-    if (interaction.commandName === 'table') {
+    if (interaction.isCommand() && interaction.commandName === 'table') {
         const embed = new EmbedBuilder()
             .setTitle('Заполнение банковского счета')
             .setDescription('Нажмите на кнопку ниже, чтобы заполнить форму')
