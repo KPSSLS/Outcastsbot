@@ -263,19 +263,27 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
 });
 
 // Настройка Google Sheets
-const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E'; // ID из URL таблицы (часть между /d/ и /edit)
-const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E';
 
 // Функция для добавления данных в таблицу
 async function addToSheet(username, bankAccount) {
     try {
-        await doc.useServiceAccountAuth({
-            client_email: 'SHARE_EMAIL', // Email, которому вы дали доступ к таблице
-            private_key: 'YOUR_PRIVATE_KEY', // Можно использовать любой ключ, если таблица публичная
-        });
+        // Создаем новый экземпляр документа для каждого запроса
+        const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+        
+        // Для публичной таблицы не нужна авторизация
         await doc.loadInfo();
+        
+        // Получаем первый лист
         const sheet = doc.sheetsByIndex[0];
-        await sheet.addRow({ 'Имя пользователя': username, 'Банковский счет': bankAccount });
+
+        // Добавляем строку
+        await sheet.addRow({
+            'Имя пользователя': username,
+            'Банковский счет': bankAccount
+        });
+
+        console.log('Successfully added data to sheet');
         return true;
     } catch (error) {
         console.error('Error adding to sheet:', error);
