@@ -285,36 +285,38 @@ async function addToSheet(username, bankAccount) {
 
 // Регистрация слэш-команд
 // Функция для регистрации команд
-async function registerCommands(clientId) {
-    const commands = [
-        new SlashCommandBuilder()
-            .setName('table')
-            .setDescription('Открыть форму для заполнения банковского счета')
-    ];
+async function deployCommands() {
+    const rest = new REST().setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
 
-    const rest = new REST({ version: '10' }).setToken('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
+    const tableCommand = new SlashCommandBuilder()
+        .setName('table')
+        .setDescription('Открыть форму для заполнения банковского счета');
 
     try {
-        console.log('Started refreshing application (/) commands.');
+        console.log('Started deploying slash commands...');
 
-        // Регистрируем команды глобально
-        const data = await rest.put(
-            Routes.applicationCommands(clientId),
-            { body: commands.map(command => command.toJSON()) }
+        // Сначала удаляем все существующие команды
+        await rest.put(
+            Routes.applicationCommands('1355683641950212167'),
+            { body: [] }
         );
 
-        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
-        return true;
+        // Затем добавляем новые команды
+        await rest.put(
+            Routes.applicationCommands('1355683641950212167'),
+            { body: [tableCommand.toJSON()] }
+        );
+
+        console.log('Successfully deployed slash commands!');
     } catch (error) {
-        console.error('Error registering slash commands:', error);
-        return false;
+        console.error('Error deploying commands:', error);
     }
 }
 
 // Регистрация команд
 client.once('ready', async () => {
     console.log('Bot is ready!');
-    await registerCommands(client.user.id);
+    await deployCommands();
     
     // Функция форматирования времени
 function formatTime(ms) {
