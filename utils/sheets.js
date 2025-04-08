@@ -1,21 +1,31 @@
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const credentials = require('../credentials.json');
+const fs = require('fs');
+const { google } = require('googleapis');
+const paths = require('../config/paths');
 
+// Настройка Google Sheets
 const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E';
 
 async function addToSheet(username, bankAccount) {
     try {
-        const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+        const credentials = require(paths.credentialsPath);
+        const { client_email, private_key } = credentials;
 
-        // Используем сервисный аккаунт
-        await doc.useServiceAccountAuth(credentials);
+        const auth = new google.auth.JWT(
+            client_email,
+            null,
+            private_key,
+            ['https://www.googleapis.com/auth/spreadsheets']
+        );
 
-        await doc.loadInfo();
-        const sheet = doc.sheetsByIndex[0];
+        const sheets = google.sheets({ version: 'v4', auth });
 
-        await sheet.addRow({
-            'Имя пользователя': username,
-            'Банковский счет': bankAccount
+        const values = [[username, bankAccount, new Date().toLocaleString()]];
+
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Лист1!A:C',
+            valueInputOption: 'USER_ENTERED',
+            resource: { values }
         });
 
         console.log('Successfully added data to sheet');

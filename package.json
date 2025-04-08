@@ -1,14 +1,17 @@
 {
   "name": "outcost-bot",
   "version": "1.0.0",
-  "description": "Discord bot for applications",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "discord.js": "^14.14.1",
     "google-spreadsheet": "^3.3.0",
-    "googleapis": "^105.0.0"
+    "googleapis": "^131.0.0"
   }
 }
