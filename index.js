@@ -293,7 +293,7 @@ client.once('ready', async () => {
 
     try {
         console.log('Started refreshing application (/) commands.');
-        await client.application.commands.set(commands);
+        await client.application.commands.set(slashCommands);
         console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error('Error registering slash commands:', error);
