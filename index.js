@@ -1,4 +1,5 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, SlashCommandBuilder } = require('discord.js');
+const { GoogleSpreadsheet } = require('google-spreadsheet');
 const fs = require('fs');
 const path = require('path');
 
@@ -257,8 +258,41 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
     }
 });
 
+// Настройка Google Sheets
+const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E'; // ID из URL таблицы (часть между /d/ и /edit)
+const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+
+// Функция для добавления данных в таблицу
+async function addToSheet(username, bankAccount) {
+    try {
+        await doc.useServiceAccountAuth({
+            client_email: 'SHARE_EMAIL', // Email, которому вы дали доступ к таблице
+            private_key: 'YOUR_PRIVATE_KEY', // Можно использовать любой ключ, если таблица публичная
+        });
+        await doc.loadInfo();
+        const sheet = doc.sheetsByIndex[0];
+        await sheet.addRow({ 'Имя пользователя': username, 'Банковский счет': bankAccount });
+        return true;
+    } catch (error) {
+        console.error('Error adding to sheet:', error);
+        return false;
+    }
+}
+
+// Регистрация слэш-команд
 client.once('ready', async () => {
     console.log('Bot is ready!');
+    
+    const tableCommand = new SlashCommandBuilder()
+        .setName('table')
+        .setDescription('Открыть форму для заполнения банковского счета');
+
+    try {
+        await client.application.commands.set([tableCommand]);
+        console.log('Slash commands registered successfully!');
+    } catch (error) {
+        console.error('Error registering slash commands:', error);
+    }
     
     // Функция форматирования времени
 function formatTime(ms) {
@@ -328,6 +362,71 @@ const activeStatistics = new Map();
 const storageMessages = new Map();
 
 client.on('interactionCreate', async interaction => {
+    // Обработка команды /table
+    if (interaction.commandName === 'table') {
+        const embed = new EmbedBuilder()
+            .setTitle('Заполнение банковского счета')
+            .setDescription('Нажмите на кнопку ниже, чтобы заполнить форму')
+            .setColor('#0099ff');
+
+        const button = new ButtonBuilder()
+            .setCustomId('fill_form')
+            .setLabel('Заполнить')
+            .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(button);
+
+        await interaction.reply({
+            embeds: [embed],
+            components: [row],
+            ephemeral: true
+        });
+        return;
+    }
+
+    // Обработка нажатия на кнопку
+    if (interaction.customId === 'fill_form') {
+        const modal = new ModalBuilder()
+            .setCustomId('bank_form')
+            .setTitle('Форма банковского счета');
+
+        const bankAccountInput = new TextInputBuilder()
+            .setCustomId('bank_account')
+            .setLabel('Ваш банковский счет')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const firstActionRow = new ActionRowBuilder().addComponents(bankAccountInput);
+        modal.addComponents(firstActionRow);
+
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // Обработка отправки формы
+    if (interaction.customId === 'bank_form') {
+        const bankAccount = interaction.fields.getTextInputValue('bank_account');
+        const username = interaction.member.displayName;
+
+        try {
+            // Записываем данные в Google Sheets
+            const success = await addToSheet(username, bankAccount);
+
+            await interaction.reply({
+                content: 'Ваши данные успешно сохранены!',
+                ephemeral: true
+            });
+        } catch (error) {
+            console.error('Error saving to Google Sheets:', error);
+            await interaction.reply({
+                content: 'Произошла ошибка при сохранении данных.',
+                ephemeral: true
+            });
+        }
+        return;
+    }
+
+
     try {
         if (interaction.isCommand()) {
             switch (interaction.commandName) {
