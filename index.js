@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelType, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const { config, loadConfig } = require('./config/config');
 const { getStats, loadStats, saveStats, initializeStats } = require('./utils/stats');
 const { getCooldowns, loadCooldowns, saveCooldowns } = require('./utils/cooldowns');

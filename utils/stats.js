@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
+const paths = require('../config/paths');
 
 let stats = {};
 
