@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const paths = require('../config/paths');
+const paths = require(path.join(__dirname, '..', 'config', 'paths'));
 
 let stats = {};
 

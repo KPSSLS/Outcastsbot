@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { google } = require('googleapis');
-const paths = require('../config/paths');
+const path = require('path');
+const paths = require(path.join(__dirname, '..', 'config', 'paths'));
 
 // Настройка Google Sheets
 const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E';

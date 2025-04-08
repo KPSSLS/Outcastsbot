@@ -1,5 +1,6 @@
 const fs = require('fs');
-const paths = require('../config/paths');
+const path = require('path');
+const paths = require(path.join(__dirname, '..', 'config', 'paths'));
 
 let cooldowns = {};
 
