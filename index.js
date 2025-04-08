@@ -264,14 +264,18 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
 
 // Настройка Google Sheets
 const SPREADSHEET_ID = '1Vh5OPCiiPp2bWPJZyWtP9F6JU_Ebiu_J8_9CaeSrv4E';
+const API_KEY = 'AIzaSyDW28RaOgWqzUuOqzwhv4kOhXT6XMVG86g'; // Ваш API ключ
 
 // Функция для добавления данных в таблицу
 async function addToSheet(username, bankAccount) {
     try {
-        // Создаем новый экземпляр документа для каждого запроса
+        // Создаем новый экземпляр документа
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
         
-        // Для публичной таблицы не нужна авторизация
+        // Авторизуемся через API ключ
+        await doc.useApiKey(API_KEY);
+        
+        // Загружаем информацию о таблице
         await doc.loadInfo();
         
         // Получаем первый лист
