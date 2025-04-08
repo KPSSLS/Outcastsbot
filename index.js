@@ -1,9 +1,8 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, SlashCommandBuilder, Routes } = require('discord.js');
-const { REST } = require('discord.js');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
+const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
+// Создаем клиента Discord
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -17,26 +16,32 @@ const client = new Client({
     partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
-// Константы
-const APPLICATION_COOLDOWN = 30 * 60 * 1000; // 30 минут в миллисекундах
+// Загружаем команды
+client.commands = new Map();
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Пути к файлам
-const configPath = path.join(__dirname, 'config.json');
-const statsPath = path.join(__dirname, 'stats.json');
-const cooldownsPath = path.join(__dirname, 'cooldowns.json');
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command);
+    }
+}
 
-// Загрузка данных
-let config = { applicationChannelId: null, acceptedRoleId: null };
-let stats = { 
-    acceptedApplications: {},
-    messageCount: {},
-    rageActivity: {}, // Время в RAGE:MP в миллисекундах
-    rageLastSeen: {}, // Время последнего обнаружения в игре
-    voiceActivity: {}, // Время в голосовых каналах в миллисекундах
-    voiceLastSeen: {} // Время последнего обнаружения в голосовом канале
-};
+// Загружаем события
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
-// Инициализируем объекты статистики, если они не существуют
+for (const file of eventFiles) {
+    const filePath = path.join(eventsPath, file);
+    const event = require(filePath);
+    if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args));
+    }
+}
 function initializeStats() {
     if (!stats.messageCount) stats.messageCount = {};
     if (!stats.rageActivity) stats.rageActivity = {};
