@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { addFinanceRecord } = require('./utils/baserow');
 
 const client = new Client({
     intents: [
@@ -310,6 +311,10 @@ const commands = [
         {
             name: 'склад',
             description: 'Управление складом'
+        },
+        {
+            name: 'финансы',
+            description: 'Заполнить финансовые данные'
         }
     ];
 
@@ -328,9 +333,71 @@ const activeStatistics = new Map();
 const storageMessages = new Map();
 
 client.on('interactionCreate', async interaction => {
+    // Обработка нажатия на кнопку
+    if (interaction.isButton() && interaction.customId === 'finance_button') {
+        const modal = new ModalBuilder()
+            .setCustomId('financeModal')
+            .setTitle('Финансовые данные');
+
+        const accountNumberInput = new TextInputBuilder()
+            .setCustomId('accountNumber')
+            .setLabel('Номер счета')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const nicknameInput = new TextInputBuilder()
+            .setCustomId('nickname')
+            .setLabel('Никнейм')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+        const firstActionRow = new ActionRowBuilder().addComponents(accountNumberInput);
+        const secondActionRow = new ActionRowBuilder().addComponents(nicknameInput);
+
+        modal.addComponents(firstActionRow, secondActionRow);
+        await interaction.showModal(modal);
+        return;
+    }
+
+    // Обработка отправки модальной формы
+    if (interaction.isModalSubmit() && interaction.customId === 'financeModal') {
+        try {
+            const accountNumber = interaction.fields.getTextInputValue('accountNumber');
+            const nickname = interaction.fields.getTextInputValue('nickname');
+
+            await addFinanceRecord(accountNumber, nickname);
+            await interaction.reply({
+                content: 'Ваши данные успешно сохранены в Baserow!',
+                ephemeral: true
+            });
+        } catch (error) {
+            console.error('Ошибка при сохранении данных:', error);
+            await interaction.reply({
+                content: 'Произошла ошибка при сохранении данных.',
+                ephemeral: true
+            });
+        }
+        return;
+    }
+
     try {
         if (interaction.isCommand()) {
             switch (interaction.commandName) {
+                case 'финансы':
+                    const financeButton = new ButtonBuilder()
+                        .setCustomId('finance_button')
+                        .setLabel('Заполнить данные')
+                        .setStyle(ButtonStyle.Primary);
+
+                    const financeRow = new ActionRowBuilder()
+                        .addComponents(financeButton);
+
+                    await interaction.reply({
+                        content: 'Нажмите на кнопку ниже, чтобы заполнить финансовые данные:',
+                        components: [financeRow],
+                        ephemeral: true
+                    });
+                    break;
                 case 'статистика':
                     // Собираем все виды статистики
                     const messageStats = Object.entries(stats.messageCount || {})
