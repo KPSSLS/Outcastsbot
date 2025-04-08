@@ -16,6 +16,14 @@ const client = new Client({
     partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
 
+// Создаем команды
+const commands = [
+    new SlashCommandBuilder()
+        .setName('table')
+        .setDescription('Открыть форму для заполнения банковского счета')
+        .toJSON()
+];
+
 // Константы
 const APPLICATION_COOLDOWN = 30 * 60 * 1000; // 30 минут в миллисекундах
 
@@ -284,16 +292,10 @@ async function addToSheet(username, bankAccount) {
 client.once('ready', async () => {
     console.log('Bot is ready!');
     
-    const slashCommands = [
-        new SlashCommandBuilder()
-            .setName('table')
-            .setDescription('Открыть форму для заполнения банковского счета')
-            .toJSON()
-    ];
-
     try {
         console.log('Started refreshing application (/) commands.');
-        await client.application.commands.set(slashCommands);
+        // Регистрируем команды глобально
+        await client.application.commands.set(commands);
         console.log('Successfully reloaded application (/) commands.');
     } catch (error) {
         console.error('Error registering slash commands:', error);
@@ -367,6 +369,8 @@ const activeStatistics = new Map();
 const storageMessages = new Map();
 
 client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand() && !interaction.isButton() && !interaction.isModalSubmit()) return;
+
     // Обработка команды /table
     if (interaction.commandName === 'table') {
         const embed = new EmbedBuilder()
