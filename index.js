@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { addFinanceRecord, addStatsRecord } = require('./utils/baserow');
@@ -305,47 +305,33 @@ function formatTime(ms) {
 client.once('ready', async () => {
     try {
         const appCommands = [
-        {
-            name: 'заявка',
-            description: 'Отправить форму заявки'
-        },
-        {
-            name: 'установитьканалзаявок',
-            description: 'Установить канал для заявок',
-            options: [
-                {
-                    name: 'канал',
-                    description: 'Выберите канал',
-                    type: 7,
-                    required: true
-                }
-            ]
-        },
-        {
-            name: 'установитьрольпринятия',
-            description: 'Установить роль для принятых участников',
-            options: [
-                {
-                    name: 'роль',
-                    description: 'Выберите роль',
-                    type: 8,
-                    required: true
-                }
-            ]
-        },
-        {
-            name: 'статистика',
-            description: 'Показать статистику принятых заявок'
-        },
-        {
-            name: 'склад',
-            description: 'Управление складом'
-        },
-        {
-            name: 'финансы',
-            description: 'Заполнить финансовые данные'
-        }
-    ];
+            new SlashCommandBuilder()
+                .setName('заявка')
+                .setDescription('Отправить форму заявки'),
+            new SlashCommandBuilder()
+                .setName('установитьканалзаявок')
+                .setDescription('Установить канал для заявок')
+                .addChannelOption(option =>
+                    option.setName('канал')
+                        .setDescription('Выберите канал')
+                        .setRequired(true)),
+            new SlashCommandBuilder()
+                .setName('установитьрольпринятия')
+                .setDescription('Установить роль для принятых участников')
+                .addRoleOption(option =>
+                    option.setName('роль')
+                        .setDescription('Выберите роль')
+                        .setRequired(true)),
+            new SlashCommandBuilder()
+                .setName('статистика')
+                .setDescription('Показать статистику принятых заявок'),
+            new SlashCommandBuilder()
+                .setName('склад')
+                .setDescription('Управление складом'),
+            new SlashCommandBuilder()
+                .setName('финансы')
+                .setDescription('Заполнить финансовые данные')
+        ].map(command => command.toJSON());
 
         const rest = new REST({ version: '10' }).setToken(client.token);
         await rest.put(
