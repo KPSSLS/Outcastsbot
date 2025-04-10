@@ -265,8 +265,25 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
 
 client.once('ready', async () => {
     console.log('Bot is ready!');
-    
-    // Функция форматирования времени
+
+    // Регистрируем слеш-команды
+    const commands = [
+        new SlashCommandBuilder()
+            .setName('setfinancechannel')
+            .setDescription('Установить текущий канал как канал для финансовой статистики')
+            .setDefaultMemberPermissions('0') // Только администраторы
+    ];
+
+    try {
+        console.log('Started refreshing application (/) commands.');
+        await client.application.commands.set(commands);
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error('Error registering commands:', error);
+    }
+});
+
+// Функция форматирования времени
 function formatTime(ms) {
     const days = Math.floor(ms / (24 * 3600000));
     const hours = Math.floor((ms % (24 * 3600000)) / 3600000);
