@@ -263,36 +263,29 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
     }
 });
 
-// Функция для регистрации команд
-function registerCommands(client) {
-    const commands = [
-        new SlashCommandBuilder()
-            .setName('setfinancechannel')
-            .setDescription('Установить текущий канал как канал для финансовой статистики')
-            .setDefaultMemberPermissions('0')
-    ];
-
-    const rest = new REST().setToken(client.token);
-
-    (async () => {
-        try {
-            console.log('Started refreshing application (/) commands.');
-
-            await rest.put(
-                Routes.applicationCommands(client.user.id),
-                { body: commands.map(command => command.toJSON()) },
-            );
-
-            console.log('Successfully reloaded application (/) commands.');
-        } catch (error) {
-            console.error('Error registering commands:', error);
-        }
-    })();
-}
-
-client.once('ready', () => {
-    console.log('Bot is ready!');
-    registerCommands(client);
+client.once('ready', async () => {
+    try {
+        console.log('Bot is ready!');
+        
+        // Регистрируем команды
+        const rest = new REST({ version: '10' }).setToken(client.token);
+        
+        const slashCommands = [
+            new SlashCommandBuilder()
+                .setName('setfinancechannel')
+                .setDescription('Установить текущий канал как канал для финансовой статистики')
+                .setDefaultMemberPermissions('0')
+        ];
+        
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: slashCommands.map(command => command.toJSON()) }
+        );
+        
+        console.log('Successfully registered application commands.');
+    } catch (error) {
+        console.error('Error during bot initialization:', error);
+    }
 });
 
 // Функция форматирования времени
@@ -1218,25 +1211,34 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
     if (interaction.commandName === 'setfinancechannel') {
-        // Проверка прав администратора
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return await interaction.reply({
-                content: 'У вас нет прав для использования этой команды!',
+        try {
+            // Проверка прав администратора
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                await interaction.reply({
+                    content: 'У вас нет прав для использования этой команды!',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            config.financeChannelId = interaction.channelId;
+            config.financeMessageId = null; // Сбрасываем ID сообщения
+            saveConfig();
+
+            await interaction.reply({
+                content: 'Канал для финансов успешно установлен!',
                 ephemeral: true
             });
+
+            // Создаем новое эмбед-сообщение
+            await updateFinanceEmbed(interaction.guild);
+        } catch (error) {
+            console.error('Error in setfinancechannel command:', error);
+            await interaction.reply({
+                content: 'Произошла ошибка при выполнении команды!',
+                ephemeral: true
+            }).catch(console.error);
         }
-
-        config.financeChannelId = interaction.channelId;
-        config.financeMessageId = null; // Сбрасываем ID сообщения
-        saveConfig();
-
-        await interaction.reply({
-            content: 'Канал для финансов успешно установлен!',
-            ephemeral: true
-        });
-
-        // Создаем новое эмбед-сообщение
-        await updateFinanceEmbed(interaction.guild);
     }
 });
 
