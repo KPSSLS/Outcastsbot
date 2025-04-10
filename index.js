@@ -302,7 +302,8 @@ function formatTime(ms) {
     return parts.length > 0 ? parts.join(' ') : '0м';
 }
 
-const commands = [
+client.once('ready', () => {
+    const appCommands = [
         {
             name: 'заявка',
             description: 'Отправить форму заявки'
@@ -345,12 +346,9 @@ const commands = [
         }
     ];
 
-    try {
-        await client.application.commands.set(commands);
-        console.log('Slash commands registered successfully!');
-    } catch (error) {
-        console.error('Error registering slash commands:', error);
-    }
+    client.application.commands.set(appCommands)
+        .then(() => console.log('Slash commands registered successfully!'))
+        .catch(error => console.error('Error registering slash commands:', error));
 });
 
 // Глобальная карта для хранения активных страниц статистики
