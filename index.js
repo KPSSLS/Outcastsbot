@@ -514,18 +514,8 @@ client.on('interactionCreate', async interaction => {
 
             console.log('Message ID:', interaction.message.id);
 
-            const before = interaction.fields.getTextInputValue('before');
-            const after = interaction.fields.getTextInputValue('after');
-            const description = interaction.fields.getTextInputValue('description');
-
             try {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                // Получаем сообщение напрямую из канала
-                const message = await interaction.channel.messages.fetch(messageId);
-                if (!message) {
-                    await interaction.reply({
-                        content: 'Не удалось найти сообщение склада. Пожалуйста, создайте новое.',
-
+                switch (commandName) {
                     case 'setfinancechannel':
                         try {
                             // Проверка прав администратора
@@ -534,54 +524,57 @@ client.on('interactionCreate', async interaction => {
                                 return;
                             }
 
-                            try {
-                                config.financeChannelId = interaction.channelId;
-                                config.financeMessageId = null; // Сбрасываем ID сообщения
-                                saveConfig();
+                            config.financeChannelId = interaction.channelId;
+                            config.financeMessageId = null; // Сбрасываем ID сообщения
+                            saveConfig();
 
-                                await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!', true);
+                            await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!', true);
 
-                                // Создаем новое эмбед-сообщение
-                                const financeEmbed = new EmbedBuilder()
-                                    .setTitle('Финансовая статистика')
-                                    .setColor('#2b2d31')
-                                    .setDescription('Здесь будет отображаться финансовая статистика');
+                            // Создаем новое эмбед-сообщение
+                            const financeEmbed = new EmbedBuilder()
+                                .setTitle('Финансовая статистика')
+                                .setColor('#2b2d31')
+                                .setDescription('Здесь будет отображаться финансовая статистика');
 
-                                await interaction.channel.send({ embeds: [financeEmbed] });
-                            } catch (error) {
-                                console.error('Error setting finance channel:', error);
-                                await sendInteractionResponse(interaction, 'Произошла ошибка при установке канала!', true);
-                            }
-
-                    await interaction.channel.send({ embeds: [financeEmbed] });
-                } catch (error) {
-                    console.error('Error handling command:', error);
-                    await sendInteractionResponse(interaction, 'Произошла ошибка при выполнении команды!', true);
+                            await interaction.channel.send({ embeds: [financeEmbed] });
+                        } catch (error) {
+                            console.error('Error setting finance channel:', error);
+                            await sendInteractionResponse(interaction, 'Произошла ошибка при установке канала!', true);
+                        }
+                        break;
                 }
+            } catch (error) {
+                console.error('Error handling command:', error);
+                await sendInteractionResponse(interaction, 'Произошла ошибка при выполнении команды!', true);
             }
         } else if (interaction.isButton() && interaction.customId === 'finance_button') {
-            const modal = new ModalBuilder()
-                .setCustomId('financeModal')
-                .setTitle('Финансовые данные');
+            try {
+                const modal = new ModalBuilder()
+                    .setCustomId('financeModal')
+                    .setTitle('Финансовые данные');
 
-            const accountNumberInput = new TextInputBuilder()
-                .setCustomId('accountNumber')
-                .setLabel('Номер счета')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
+                const accountNumberInput = new TextInputBuilder()
+                    .setCustomId('accountNumber')
+                    .setLabel('Номер счета')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
 
-            const nicknameInput = new TextInputBuilder()
-                .setCustomId('nickname')
-                .setLabel('Никнейм')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
+                const nicknameInput = new TextInputBuilder()
+                    .setCustomId('nickname')
+                    .setLabel('Никнейм')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
 
-            const firstActionRow = new ActionRowBuilder().addComponents(accountNumberInput);
-            const secondActionRow = new ActionRowBuilder().addComponents(nicknameInput);
+                const firstActionRow = new ActionRowBuilder().addComponents(accountNumberInput);
+                const secondActionRow = new ActionRowBuilder().addComponents(nicknameInput);
 
-            modal.addComponents(firstActionRow, secondActionRow);
+                modal.addComponents(firstActionRow, secondActionRow);
 
-            await interaction.showModal(modal);
+                await interaction.showModal(modal);
+            } catch (error) {
+                console.error('Error showing finance modal:', error);
+                await sendInteractionResponse(interaction, 'Произошла ошибка при открытии окна!', true);
+            }
         } else if (interaction.isModalSubmit() && interaction.customId === 'financeModal') {
             try {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -606,11 +599,12 @@ client.on('interactionCreate', async interaction => {
                 }
             }
         } else if (interaction.isModalSubmit()) {
-            if (interaction.customId.startsWith('storage_modal_')) {
-                // Получаем messageId из последней части customId
-                const parts = interaction.customId.split('_');
-                const messageId = parts[parts.length - 1];
-                // Получаем тип, объединяя все части между storage_modal_ и messageId
+            try {
+                if (interaction.customId.startsWith('storage_modal_')) {
+                    // Получаем messageId из последней части customId
+                    const parts = interaction.customId.split('_');
+                    const messageId = parts[parts.length - 1];
+                    // Получаем тип, объединяя все части между storage_modal_ и messageId
                 const type = parts.slice(2, -1).join('_');
 
                 console.log('Modal submit - Message ID:', messageId, 'Type:', type);
