@@ -530,44 +530,28 @@ client.on('interactionCreate', async interaction => {
                         try {
                             // Проверка прав администратора
                             if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                                await interaction.reply({
-                                    content: 'У вас нет прав для использования этой команды!',
-                                    flags: MessageFlags.Ephemeral
-                                });
+                                await sendInteractionResponse(interaction, 'У вас нет прав для использования этой команды!', true);
                                 return;
                             }
-                            config.financeChannelId = interaction.channelId;
-                            saveConfig();
-                            await interaction.reply({
-                                content: 'Канал для финансов успешно установлен!',
-                                flags: MessageFlags.Ephemeral
-                            });
-                        } catch (error) {
-                            console.error('Error setting finance channel:', error);
-                            await interaction.reply({
-                                content: 'Произошла ошибка при установке канала!',
-                                flags: MessageFlags.Ephemeral
-                            });
-                        }
-                        break;
-                }
 
-                // Устанавливаем канал для финансов
-                config.financeChannelId = interaction.channelId;
-                config.financeMessageId = null; // Сбрасываем ID сообщения
-                saveConfig();
+                            try {
+                                config.financeChannelId = interaction.channelId;
+                                config.financeMessageId = null; // Сбрасываем ID сообщения
+                                saveConfig();
 
-                try {
-                    await interaction.reply({
-                        content: 'Канал для финансов успешно установлен!',
-                        flags: MessageFlags.Ephemeral
-                    });
+                                await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!', true);
 
-                    // Создаем новое эмбед-сообщение
-                    const financeEmbed = new EmbedBuilder()
-                        .setTitle('Финансовая статистика')
-                        .setColor('#2b2d31')
-                        .setDescription('Здесь будет отображаться финансовая статистика');
+                                // Создаем новое эмбед-сообщение
+                                const financeEmbed = new EmbedBuilder()
+                                    .setTitle('Финансовая статистика')
+                                    .setColor('#2b2d31')
+                                    .setDescription('Здесь будет отображаться финансовая статистика');
+
+                                await interaction.channel.send({ embeds: [financeEmbed] });
+                            } catch (error) {
+                                console.error('Error setting finance channel:', error);
+                                await sendInteractionResponse(interaction, 'Произошла ошибка при установке канала!', true);
+                            }
 
                     await interaction.channel.send({ embeds: [financeEmbed] });
                 } catch (error) {
@@ -772,15 +756,11 @@ client.on('interactionCreate', async interaction => {
                         await sendInteractionResponse(interaction, 'Изменения сохранены!');
                     } catch (error) {
                         console.error('Error in command execution:', error);
-                        
-                        if (error.code === 10062) {
-                            // Interaction token has expired, we can't respond anymore
-                            console.log('Interaction expired, unable to respond');
-                            return;
+                        try {
+                            await sendInteractionResponse(interaction, 'Произошла ошибка!', true);
+                        } catch (replyError) {
+                            console.error('Failed to send error response:', replyError);
                         }
-                        
-                        // Try to respond with error message
-                        await sendInteractionResponse(interaction, 'Произошла ошибка!', true);
                     }
                 }
             }
@@ -790,16 +770,16 @@ client.on('interactionCreate', async interaction => {
         // Не пытаемся отправить ответ, так как это может вызвать дополнительные ошибки
     }
 });
-});
+
 
 async function updateStorageEmbed(message, fieldIndex, before, after, description, emoji, typeName, interaction) {
-    if (!message?.embeds?.[0]) {
-        console.error('Invalid message or missing embeds');
-        await sendInteractionResponse(interaction, 'Произошла ошибка при обновлении склада.', true);
-        return;
-    }
-
     try {
+        if (!message?.embeds?.[0]) {
+            console.error('Invalid message or missing embeds');
+            await sendInteractionResponse(interaction, 'Произошла ошибка при обновлении склада.', true);
+            return;
+        }
+
         // Создаем новый эмбед на основе старого
         const newEmbed = new EmbedBuilder()
             .setTitle(message.embeds[0].title)
