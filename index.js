@@ -263,23 +263,36 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
     }
 });
 
-client.once('ready', () => {
-    console.log('Bot is ready!');
-
-    // Регистрируем слеш-команды
+// Функция для регистрации команд
+function registerCommands(client) {
     const commands = [
         new SlashCommandBuilder()
             .setName('setfinancechannel')
             .setDescription('Установить текущий канал как канал для финансовой статистики')
-            .setDefaultMemberPermissions('0') // Только администраторы
+            .setDefaultMemberPermissions('0')
     ];
 
-    // Регистрируем команды
-    const commandsData = commands.map(command => command.toJSON());
-    
-    client.application.commands.set(commandsData)
-        .then(() => console.log('Successfully registered application commands.'))
-        .catch(error => console.error('Error registering commands:', error));
+    const rest = new REST().setToken(client.token);
+
+    (async () => {
+        try {
+            console.log('Started refreshing application (/) commands.');
+
+            await rest.put(
+                Routes.applicationCommands(client.user.id),
+                { body: commands.map(command => command.toJSON()) },
+            );
+
+            console.log('Successfully reloaded application (/) commands.');
+        } catch (error) {
+            console.error('Error registering commands:', error);
+        }
+    })();
+}
+
+client.once('ready', () => {
+    console.log('Bot is ready!');
+    registerCommands(client);
 });
 
 // Функция форматирования времени
