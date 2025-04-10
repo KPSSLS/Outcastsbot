@@ -514,38 +514,31 @@ client.on('interactionCreate', async interaction => {
 
             console.log('Message ID:', interaction.message.id);
 
-            try {
-                switch (commandName) {
-                    case 'setfinancechannel':
-                        try {
-                            // Проверка прав администратора
-                            if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                                await sendInteractionResponse(interaction, 'У вас нет прав для использования этой команды!', true);
-                                return;
-                            }
+            if (commandName === 'setfinancechannel') {
+                try {
+                    // Проверка прав администратора
+                    if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                        await sendInteractionResponse(interaction, 'У вас нет прав для использования этой команды!', true);
+                        return;
+                    }
 
-                            config.financeChannelId = interaction.channelId;
-                            config.financeMessageId = null; // Сбрасываем ID сообщения
-                            saveConfig();
+                    config.financeChannelId = interaction.channelId;
+                    config.financeMessageId = null; // Сбрасываем ID сообщения
+                    saveConfig();
 
-                            await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!', true);
+                    await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!', true);
 
-                            // Создаем новое эмбед-сообщение
-                            const financeEmbed = new EmbedBuilder()
-                                .setTitle('Финансовая статистика')
-                                .setColor('#2b2d31')
-                                .setDescription('Здесь будет отображаться финансовая статистика');
+                    // Создаем новое эмбед-сообщение
+                    const financeEmbed = new EmbedBuilder()
+                        .setTitle('Финансовая статистика')
+                        .setColor('#2b2d31')
+                        .setDescription('Здесь будет отображаться финансовая статистика');
 
-                            await interaction.channel.send({ embeds: [financeEmbed] });
-                        } catch (error) {
-                            console.error('Error setting finance channel:', error);
-                            await sendInteractionResponse(interaction, 'Произошла ошибка при установке канала!', true);
-                        }
-                        break;
+                    await interaction.channel.send({ embeds: [financeEmbed] });
+                } catch (error) {
+                    console.error('Error setting finance channel:', error);
+                    await sendInteractionResponse(interaction, 'Произошла ошибка при установке канала!', true);
                 }
-            } catch (error) {
-                console.error('Error handling command:', error);
-                await sendInteractionResponse(interaction, 'Произошла ошибка при выполнении команды!', true);
             }
         } else if (interaction.isButton() && interaction.customId === 'finance_button') {
             try {
@@ -599,8 +592,8 @@ client.on('interactionCreate', async interaction => {
                 }
             }
         } else if (interaction.isModalSubmit()) {
-            try {
-                if (interaction.customId.startsWith('storage_modal_')) {
+            if (interaction.customId.startsWith('storage_modal_')) {
+                try {
                     // Получаем messageId из последней части customId
                     const parts = interaction.customId.split('_');
                     const messageId = parts[parts.length - 1];
@@ -756,6 +749,13 @@ client.on('interactionCreate', async interaction => {
                             console.error('Failed to send error response:', replyError);
                         }
                     }
+                } catch (error) {
+                    console.error('Error in modal submit:', error);
+                    try {
+                        await sendInteractionResponse(interaction, 'Произошла ошибка!', true);
+                    } catch (replyError) {
+                        console.error('Failed to send error response:', replyError);
+                    }
                 }
             }
         }
@@ -786,8 +786,38 @@ async function updateStorageEmbed(message, fieldIndex, before, after, descriptio
             inline: field.inline,
             nameColor: ['Heavy Sniper Printed', 'Heavy Sniper Corp', 'Sniper Rifle Corp'].includes(field.name) ? '#ff0000' : undefined
         }));
-        
+
         // Проверяем существование поля
+        if (!fields[fieldIndex]) {
+            throw new Error('Field index out of bounds');
+        }
+
+        // Обновляем поле
+        fields[fieldIndex].value = `${before} \u2192 ${after}\n${description}`;
+
+        // Добавляем поля в эмбед
+        newEmbed.addFields(fields);
+
+        // Обновляем эмбед
+        await message.edit({ embeds: [newEmbed] });
+
+        // Отправляем логи в тред
+        const logEmbed = new EmbedBuilder()
+            .setTitle('Изменение склада')
+            .setColor('#2b2d31')
+            .setDescription(`${emoji} **${typeName}**\n${before} \u2192 ${after}\n${description}`);
+
+        const thread = await message.thread;
+        if (thread) {
+            await thread.send({
+                embeds: [logEmbed]
+            });
+        }
+    } catch (error) {
+        console.error('Error updating storage:', error);
+        await sendInteractionResponse(interaction, 'Произошла ошибка при обновлении склада.', true);
+    }
+}
         if (!fields[fieldIndex]) {
             throw new Error('Field index out of bounds');
         }
