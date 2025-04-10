@@ -70,61 +70,93 @@ const voiceStates = new Map();
 // Функции загрузки и сохранения данных
 function loadConfig() {
     try {
-        const data = fs.readFileSync(configPath, 'utf8');
-        config = JSON.parse(data);
-        console.log('Configuration loaded successfully');
+        if (fs.existsSync(configPath)) {
+            const data = fs.readFileSync(configPath, 'utf8');
+            config = JSON.parse(data);
+            console.log('Configuration loaded successfully');
+        } else {
+            console.log('Configuration file not found, using defaults');
+            saveConfig(); // Create default config file
+        }
     } catch (error) {
         console.error('Error loading configuration:', error);
+        process.exit(1); // Exit if we can't load config
     }
 }
 
 function saveConfig() {
     try {
+        const dir = path.dirname(configPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
         console.log('Configuration saved successfully');
     } catch (error) {
         console.error('Error saving configuration:', error);
+        throw error; // Re-throw to handle at caller level
     }
 }
 
 function loadStats() {
     try {
-        const data = fs.readFileSync(statsPath, 'utf8');
-        stats = JSON.parse(data);
-        console.log('Statistics loaded successfully');
+        if (fs.existsSync(statsPath)) {
+            const data = fs.readFileSync(statsPath, 'utf8');
+            stats = JSON.parse(data);
+            console.log('Statistics loaded successfully');
+        } else {
+            console.log('Statistics file not found, using defaults');
+            saveStats(); // Create default stats file
+        }
     } catch (error) {
         console.error('Error loading statistics:', error);
-        // Если файл не существует, создаем его
-        saveStats();
+        initializeStats(); // Reset to defaults if load fails
+        saveStats(); // Try to create new file
     }
 }
 
 function saveStats() {
     try {
+        const dir = path.dirname(statsPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(statsPath, JSON.stringify(stats, null, 4));
         console.log('Statistics saved successfully');
     } catch (error) {
         console.error('Error saving statistics:', error);
+        throw error; // Re-throw to handle at caller level
     }
 }
 
 function loadCooldowns() {
     try {
-        const data = fs.readFileSync(cooldownsPath, 'utf8');
-        cooldowns = JSON.parse(data);
-        console.log('Cooldowns loaded successfully');
+        if (fs.existsSync(cooldownsPath)) {
+            const data = fs.readFileSync(cooldownsPath, 'utf8');
+            cooldowns = JSON.parse(data);
+            console.log('Cooldowns loaded successfully');
+        } else {
+            console.log('Cooldowns file not found, using defaults');
+            saveCooldowns(); // Create default cooldowns file
+        }
     } catch (error) {
         console.error('Error loading cooldowns:', error);
-        saveCooldowns();
+        cooldowns = { applications: {} }; // Reset to defaults
+        saveCooldowns(); // Try to create new file
     }
 }
 
 function saveCooldowns() {
     try {
+        const dir = path.dirname(cooldownsPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(cooldownsPath, JSON.stringify(cooldowns, null, 4));
         console.log('Cooldowns saved successfully');
     } catch (error) {
         console.error('Error saving cooldowns:', error);
+        throw error; // Re-throw to handle at caller level
     }
 }
 
@@ -525,27 +557,22 @@ client.on('interactionCreate', async interaction => {
                 config.financeMessageId = null; // Сбрасываем ID сообщения
                 saveConfig();
 
-                await interaction.reply({
-                    content: 'Канал для финансов успешно установлен!',
-                    flags: MessageFlags.Ephemeral
-                });
-
-                // Создаем новое эмбед-сообщение
-                const financeEmbed = new EmbedBuilder()
-                    .setTitle('Финансовая статистика')
-                    .setColor('#2b2d31')
-                    .setDescription('Здесь будет отображаться финансовая статистика');
-
-                await interaction.channel.send({ embeds: [financeEmbed] });
-            } catch (error) {
-                console.error('Error handling command:', error);
                 try {
-                    await interaction.followUp({
-                        content: 'Произошла ошибка при выполнении команды!',
+                    await interaction.reply({
+                        content: 'Канал для финансов успешно установлен!',
                         flags: MessageFlags.Ephemeral
                     });
-                } catch (replyError) {
-                    console.error('Error sending error message:', replyError);
+
+                    // Создаем новое эмбед-сообщение
+                    const financeEmbed = new EmbedBuilder()
+                        .setTitle('Финансовая статистика')
+                        .setColor('#2b2d31')
+                        .setDescription('Здесь будет отображаться финансовая статистика');
+
+                    await interaction.channel.send({ embeds: [financeEmbed] });
+                } catch (error) {
+                    console.error('Error handling command:', error);
+                    await sendInteractionResponse(interaction, 'Произошла ошибка при выполнении команды!', true);
                 }
             }
         } else if (interaction.isButton() && interaction.customId === 'finance_button') {
@@ -742,82 +769,149 @@ client.on('interactionCreate', async interaction => {
                             embeds: [logEmbed]
                         });
 
-                        await interaction.reply({
-                            content: 'Изменения сохранены!',
-                            flags: MessageFlags.Ephemeral
-                        });
+                        await sendInteractionResponse(interaction, 'Изменения сохранены!');
                     } catch (error) {
-                        console.error('Error updating storage:', error);
-                        await interaction.reply({
-                            content: 'Произошла ошибка при обновлении склада.',
-                            flags: MessageFlags.Ephemeral
-                        });
+                        console.error('Error in command execution:', error);
+                        
+                        if (error.code === 10062) {
+                            // Interaction token has expired, we can't respond anymore
+                            console.log('Interaction expired, unable to respond');
+                            return;
+                        }
+                        
+                        // Try to respond with error message
+                        await sendInteractionResponse(interaction, 'Произошла ошибка!', true);
                     }
                 }
             }
         }
     } catch (error) {
-        console.error('Error handling interaction:', error);
-        try {
-            // Check if the error is an Unknown Interaction error
-            if (error.code === 10062) {
-                // Interaction token has expired, we can't respond anymore
-                console.log('Interaction expired, unable to respond');
-                return;
-            }
-            
-            // Try to respond with error message
-            if (interaction.deferred || interaction.replied) {
-                await interaction.followUp({ content: 'Произошла ошибка!', flags: MessageFlags.Ephemeral }).catch(console.error);
-            } else {
-                await interaction.reply({ content: 'Произошла ошибка!', flags: MessageFlags.Ephemeral }).catch(console.error);
-            }
-        } catch (e) {
-            console.error('Failed to send error response:', e);
-        }
+        console.error('Error in interaction handler:', error);
+        // Не пытаемся отправить ответ, так как это может вызвать дополнительные ошибки
     }
 });
+});
 
-// ...
-                    }
-                    break;
+async function updateStorageEmbed(message, fieldIndex, before, after, description, emoji, typeName, interaction) {
+    if (!message?.embeds?.[0]) {
+        console.error('Invalid message or missing embeds');
+        await sendInteractionResponse(interaction, 'Произошла ошибка при обновлении склада.', true);
+        return;
+    }
+
+    try {
+        // Создаем новый эмбед на основе старого
+        const newEmbed = new EmbedBuilder()
+            .setTitle(message.embeds[0].title)
+            .setColor(message.embeds[0].color);
+
+        // Копируем все поля из старого эмбеда с сохранением цветов
+        const fields = message.embeds[0].fields.map(field => ({
+            name: field.name,
+            value: field.value,
+            inline: field.inline,
+            nameColor: ['Heavy Sniper Printed', 'Heavy Sniper Corp', 'Sniper Rifle Corp'].includes(field.name) ? '#ff0000' : undefined
+        }));
+        
+        // Проверяем существование поля
+        if (!fields[fieldIndex]) {
+            throw new Error('Field index out of bounds');
+        }
+        
+        // Обновляем нужное поле
+        fields[fieldIndex].value = after;
+        
+        // Добавляем все поля в новый эмбед
+        newEmbed.addFields(fields);
+
+        // Обновляем сообщение
+        await message.edit({
+            embeds: [newEmbed]
+        });
+
+        // Проверяем существование ветки
+        if (!message.thread) {
+            throw new Error('Thread not found');
+        }
+
+        // Отправляем лог в ветку
+        const logEmbed = new EmbedBuilder()
+            .setTitle(`${emoji} Изменение в складе: ${typeName}`)
+            .setColor('#2b2d31')
+            .addFields(
+                { name: 'Было', value: before, inline: true },
+                { name: 'Стало', value: after, inline: true },
+                { name: 'Описание', value: description },
+                { name: 'Автор', value: `<@${interaction.user.id}>` }
+            )
+            .setTimestamp();
+
+        await message.thread.send({
+            embeds: [logEmbed]
+        });
+
+        // Отправляем статистику принятых заявок в Baserow
+        try {
+            const acceptedStats = stats.acceptedApplications || {};
+            for (const [userId, count] of Object.entries(acceptedStats)) {
+                await addStatsRecord(userId, count);
+            }
+        } catch (error) {
+            console.error('Error updating stats:', error);
+            // Продолжаем выполнение, так как это некритичная ошибка
+        }
+
+        await interaction.deferReply();
+        await sendInteractionResponse(interaction, 'Изменения сохранены!');
+    } catch (error) {
+        console.error('Error updating storage:', error);
+        await sendInteractionResponse(interaction, 'Произошла ошибка при обновлении склада.', true);
+    }
+}
+
+// Обработчик команд
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    const commandName = interaction.commandName;
+
+    try {
+        // Проверяем, является ли пользователь администратором
+        if (!interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
+            await sendInteractionResponse(interaction, 'У вас нет прав для использования этой команды!', true);
+            return;
+        }
+
+        switch (commandName) {
+            case 'setfinancechannel':
+                try {
+                    // Устанавливаем канал для финансов
+                    config.financeChannelId = interaction.channelId;
+                    config.financeMessageId = null; // Сбрасываем ID сообщения
+                    saveConfig();
+
+                    await sendInteractionResponse(interaction, 'Канал для финансов успешно установлен!');
+
+                    // Создаем новое эмбед-сообщение
+                    await updateFinanceEmbed(interaction.guild);
+                } catch (error) {
+                    console.error('Error handling finance channel setup:', error);
+                    await sendInteractionResponse(interaction, 'Произошла ошибка при настройке канала!', true);
                 }
-
-                // Устанавливаем канал для финансов
-                config.financeChannelId = interaction.channelId;
-                config.financeMessageId = null; // Сбрасываем ID сообщения
-                saveConfig();
-
-                await interaction.reply({
-                    content: 'Канал для финансов успешно установлен!',
-                    flags: MessageFlags.Ephemeral
-                });
-
-                // Создаем новое эмбед-сообщение
-                await updateFinanceEmbed(interaction.guild);
                 break;
 
             default:
-                await interaction.reply({
-                    content: 'Неизвестная команда!',
-                    flags: MessageFlags.Ephemeral
-                });
+                await sendInteractionResponse(interaction, 'Неизвестная команда!', true);
+                break;
         }
     } catch (error) {
         console.error(`Error executing command ${commandName}:`, error);
-        const errorMessage = 'Произошла ошибка при выполнении команды!';
-        
-        try {
-            if (interaction.deferred || interaction.replied) {
-                await interaction.followUp({ content: errorMessage, ephemeral: true });
-            } else {
-                await interaction.reply({ content: errorMessage, ephemeral: true });
-            }
-        } catch (e) {
-            console.error('Failed to send error response:', e);
-        }
+        await sendInteractionResponse(interaction, 'Произошла ошибка при выполнении команды!', true);
     }
 });
+
+// Экспортируем клиент для использования в других файлах
+module.exports = client;
 
 // Функция для создания и обновления эмбед-сообщения с финансами
 async function updateFinanceEmbed(guild) {
@@ -874,4 +968,40 @@ async function updateFinanceEmbed(guild) {
     }
 }
 
-client.login('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
+// Функция для получения финансовых записей
+async function getFinanceRecords() {
+    try {
+        // Здесь должна быть логика получения записей из Baserow
+        return [];
+    } catch (error) {
+        console.error('Error fetching finance records:', error);
+        return [];
+    }
+}
+
+// Функция для отправки ответа на взаимодействие
+async function sendInteractionResponse(interaction, content, isError = false) {
+    try {
+        const response = {
+            content: content,
+            flags: MessageFlags.Ephemeral
+        };
+
+        if (!interaction.replied) {
+            await interaction.reply(response);
+        } else {
+            await interaction.followUp(response);
+        }
+    } catch (error) {
+        console.error(`Failed to send ${isError ? 'error' : ''} response:`, error);
+    }
+}
+
+// Загружаем токен из переменных окружения
+const token = process.env.DISCORD_TOKEN;
+if (!token) {
+    console.error('Discord token not found in environment variables!');
+    process.exit(1);
+}
+
+client.login(token);
