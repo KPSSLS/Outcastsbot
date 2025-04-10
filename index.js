@@ -675,7 +675,6 @@ client.on('interactionCreate', async interaction => {
                 const after = interaction.fields.getTextInputValue('after');
                 const description = interaction.fields.getTextInputValue('description');
 
-                try {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                     // Получаем сообщение напрямую из канала
                     const message = await interaction.channel.messages.fetch(messageId);
@@ -717,13 +716,9 @@ client.on('interactionCreate', async interaction => {
                     
                     await interaction.deferReply();
                     // Отправляем статистику принятых заявок в Baserow
-                    try {
-                        const acceptedStats = stats.acceptedApplications || {};
-                        for (const [userId, count] of Object.entries(acceptedStats)) {
-                            await addStatsRecord(userId, count);
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
+                    const acceptedStats = stats.acceptedApplications || {};
+                    for (const [userId, count] of Object.entries(acceptedStats)) {
+                        await addStatsRecord(userId, count);
                     }
                     const logEmbed = new EmbedBuilder()
                         .setTitle(`${emoji} Изменение в складе: ${typeName}`)
@@ -761,10 +756,13 @@ client.on('interactionCreate', async interaction => {
         }
     } catch (error) {
         console.error('Error in interaction handler:', error);
-        // Не пытаемся отправить ответ, так как это может вызвать дополнительные ошибки
+        try {
+            await sendInteractionResponse(interaction, 'Произошла ошибка!', true);
+        } catch (replyError) {
+            console.error('Failed to send error response:', replyError);
+        }
     }
 });
-
 
 async function updateStorageEmbed(message, fieldIndex, before, after, description, emoji, typeName, interaction) {
     try {
