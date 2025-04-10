@@ -263,7 +263,7 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
     }
 });
 
-client.once('ready', async () => {
+client.once('ready', () => {
     console.log('Bot is ready!');
 
     // Регистрируем слеш-команды
@@ -274,13 +274,12 @@ client.once('ready', async () => {
             .setDefaultMemberPermissions('0') // Только администраторы
     ];
 
-    try {
-        console.log('Started refreshing application (/) commands.');
-        await client.application.commands.set(commands);
-        console.log('Successfully reloaded application (/) commands.');
-    } catch (error) {
-        console.error('Error registering commands:', error);
-    }
+    // Регистрируем команды
+    const commandsData = commands.map(command => command.toJSON());
+    
+    client.application.commands.set(commandsData)
+        .then(() => console.log('Successfully registered application commands.'))
+        .catch(error => console.error('Error registering commands:', error));
 });
 
 // Функция форматирования времени
