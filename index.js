@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, PermissionsBitField, MessageFlags, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { addFinanceRecord, addStatsRecord } = require('./utils/baserow');
@@ -302,8 +302,9 @@ function formatTime(ms) {
     return parts.length > 0 ? parts.join(' ') : '0м';
 }
 
-client.once('ready', () => {
-    const appCommands = [
+client.once('ready', async () => {
+    try {
+        const appCommands = [
         {
             name: 'заявка',
             description: 'Отправить форму заявки'
@@ -346,9 +347,15 @@ client.once('ready', () => {
         }
     ];
 
-    client.application.commands.set(appCommands)
-        .then(() => console.log('Slash commands registered successfully!'))
-        .catch(error => console.error('Error registering slash commands:', error));
+        const rest = new REST({ version: '10' }).setToken(client.token);
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: appCommands }
+        );
+        console.log('Slash commands registered successfully!');
+    } catch (error) {
+        console.error('Error registering slash commands:', error);
+    }
 });
 
 // Глобальная карта для хранения активных страниц статистики
