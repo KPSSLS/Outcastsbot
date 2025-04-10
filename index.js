@@ -1206,38 +1206,56 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Команда для настройки канала финансов
+// Обработчик команд
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
-    if (interaction.commandName === 'setfinancechannel') {
-        try {
-            // Проверка прав администратора
-            if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    const { commandName } = interaction;
+
+    try {
+        switch (commandName) {
+            case 'setfinancechannel':
+                // Проверка прав администратора
+                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    await interaction.reply({
+                        content: 'У вас нет прав для использования этой команды!',
+                        ephemeral: true
+                    });
+                    return;
+                }
+
+                // Устанавливаем канал для финансов
+                config.financeChannelId = interaction.channelId;
+                config.financeMessageId = null; // Сбрасываем ID сообщения
+                saveConfig();
+
                 await interaction.reply({
-                    content: 'У вас нет прав для использования этой команды!',
+                    content: 'Канал для финансов успешно установлен!',
                     ephemeral: true
                 });
-                return;
+
+                // Создаем новое эмбед-сообщение
+                await updateFinanceEmbed(interaction.guild);
+                break;
+
+            default:
+                await interaction.reply({
+                    content: 'Неизвестная команда!',
+                    ephemeral: true
+                });
+        }
+    } catch (error) {
+        console.error(`Error executing command ${commandName}:`, error);
+        const errorMessage = 'Произошла ошибка при выполнении команды!';
+        
+        try {
+            if (interaction.deferred || interaction.replied) {
+                await interaction.followUp({ content: errorMessage, ephemeral: true });
+            } else {
+                await interaction.reply({ content: errorMessage, ephemeral: true });
             }
-
-            config.financeChannelId = interaction.channelId;
-            config.financeMessageId = null; // Сбрасываем ID сообщения
-            saveConfig();
-
-            await interaction.reply({
-                content: 'Канал для финансов успешно установлен!',
-                ephemeral: true
-            });
-
-            // Создаем новое эмбед-сообщение
-            await updateFinanceEmbed(interaction.guild);
-        } catch (error) {
-            console.error('Error in setfinancechannel command:', error);
-            await interaction.reply({
-                content: 'Произошла ошибка при выполнении команды!',
-                ephemeral: true
-            }).catch(console.error);
+        } catch (e) {
+            console.error('Failed to send error response:', e);
         }
     }
 });
