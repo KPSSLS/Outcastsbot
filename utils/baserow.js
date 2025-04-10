@@ -55,7 +55,27 @@ async function addStatsRecord(userId, acceptedCount) {
     }
 }
 
+async function getFinanceRecords() {
+    try {
+        const response = await axios.get(
+            `${BASEROW_API_URL}/database/rows/table/${FINANCE_TABLE_ID}/?user_field_names=true`,
+            {
+                headers: {
+                    'Authorization': `Token ${BASEROW_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        return response.data.results;
+    } catch (error) {
+        console.error('Error getting finance records:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     addFinanceRecord,
-    addStatsRecord
+    addStatsRecord,
+    getFinanceRecords
 };

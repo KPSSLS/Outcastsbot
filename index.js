@@ -24,7 +24,12 @@ const statsPath = path.join(__dirname, 'stats.json');
 const cooldownsPath = path.join(__dirname, 'cooldowns.json');
 
 // Загрузка данных
-let config = { applicationChannelId: null, acceptedRoleId: null };
+let config = { 
+    applicationChannelId: null, 
+    acceptedRoleId: null,
+    financeChannelId: null,
+    financeMessageId: null
+};
 let stats = { 
     acceptedApplications: {},
     messageCount: {},
@@ -366,6 +371,7 @@ client.on('interactionCreate', async interaction => {
             const nickname = interaction.fields.getTextInputValue('nickname');
 
             await addFinanceRecord(accountNumber, nickname);
+            await updateFinanceEmbed(interaction.guild);
             await interaction.reply({
                 content: 'Ваши данные успешно сохранены!',
                 ephemeral: true
@@ -1177,5 +1183,87 @@ client.on('interactionCreate', async interaction => {
         }
     }
 });
+
+// Команда для настройки канала финансов
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    if (interaction.commandName === 'setfinancechannel') {
+        // Проверка прав администратора
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return await interaction.reply({
+                content: 'У вас нет прав для использования этой команды!',
+                ephemeral: true
+            });
+        }
+
+        config.financeChannelId = interaction.channelId;
+        config.financeMessageId = null; // Сбрасываем ID сообщения
+        saveConfig();
+
+        await interaction.reply({
+            content: 'Канал для финансов успешно установлен!',
+            ephemeral: true
+        });
+
+        // Создаем новое эмбед-сообщение
+        await updateFinanceEmbed(interaction.guild);
+    }
+});
+
+// Функция для создания и обновления эмбед-сообщения с финансами
+async function updateFinanceEmbed(guild) {
+    if (!config.financeChannelId) return;
+
+    const channel = await guild.channels.fetch(config.financeChannelId);
+    if (!channel) return;
+
+    try {
+        const records = await getFinanceRecords();
+        
+        const embed = new EmbedBuilder()
+            .setTitle('📊 Финансовая статистика')
+            .setColor('#2b2d31')
+            .setTimestamp();
+
+        // Группируем записи по никнейму
+        const groupedRecords = records.reduce((acc, record) => {
+            const nickname = record['Никнейм'];
+            if (!acc[nickname]) {
+                acc[nickname] = [];
+            }
+            acc[nickname].push(record);
+            return acc;
+        }, {});
+
+        // Создаем поля для каждого игрока
+        Object.entries(groupedRecords).forEach(([nickname, records]) => {
+            const totalAmount = records.reduce((sum, record) => sum + parseFloat(record['Номер счета']), 0);
+            embed.addFields({
+                name: nickname,
+                value: `Всего: ${totalAmount.toFixed(2)}$\nПоследний платеж: ${records[records.length - 1]['Номер счета']}$`,
+                inline: true
+            });
+        });
+
+        if (config.financeMessageId) {
+            try {
+                const message = await channel.messages.fetch(config.financeMessageId);
+                await message.edit({ embeds: [embed] });
+            } catch (error) {
+                // Если сообщение не найдено, создаем новое
+                const message = await channel.send({ embeds: [embed] });
+                config.financeMessageId = message.id;
+                saveConfig();
+            }
+        } else {
+            const message = await channel.send({ embeds: [embed] });
+            config.financeMessageId = message.id;
+            saveConfig();
+        }
+    } catch (error) {
+        console.error('Error updating finance embed:', error);
+    }
+}
 
 client.login('MTM1NTY4MzY0MTk1MDIxMjE2Nw.GxUue5.T6Ex-3NWhNwK0z9YzJvcRbbXBAfQJWL4sQQO-8');
